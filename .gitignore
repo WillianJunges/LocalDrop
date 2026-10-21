@@ -1,0 +1,24 @@
+# Dependências e builds
+node_modules/
+dist/
+
+# Arquivos recebidos do celular (pessoais, nunca vão para o Git)
+recebidos/
+
+# Ambiente e segredos
+.env
+.env.*
+
+# Logs e temporários
+*.log
+npm-debug.log*
+*.part
+*.tmp
+
+# Sistema e editores
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
