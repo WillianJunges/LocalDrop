@@ -65,3 +65,69 @@ Express é desativado.
 
 TypeScript 7.0, Vite 8, React 19, Express 5, Vitest 5. A biblioteca `qrcode` (1.5.4) não recebe
 atualizações há algum tempo, mas é estável, muito usada e não tem alternativa claramente melhor.
+
+## Fase 2
+
+### Um arquivo por requisição
+
+O celular envia `POST /api/upload` com um arquivo só, em sequência. O progresso de cada arquivo é
+real, uma falha não derruba os outros e dá para reenviar só o que falhou. O PIN vai no header
+`X-LocalDrop-Pin`.
+
+Exigir um header customizado também protege contra CSRF: um site qualquer não consegue mandar
+esse header para o LocalDrop sem permissão de CORS, e o LocalDrop não libera CORS.
+
+### Streaming direto para o disco
+
+Com o `busboy`, o arquivo passa por um "fiscal" (`validacao.ts`) e vai direto para o disco, em
+pedaços. Um vídeo de 4 GB nunca fica inteiro na memória (há um teste com 300 MB que confere
+isso).
+
+O fiscal, durante a transmissão:
+- conta os bytes e corta assim que passa do limite da categoria;
+- confere a assinatura com os 12 primeiros bytes;
+- em txt/csv, recusa bytes nulos e caracteres de controle.
+
+### Validação pelo conteúdo
+
+| Tipo | Como é conferido |
+|---|---|
+| jpg, png, gif, webp, pdf, mp3 | assinatura no início do arquivo |
+| mp4, m4a | caixa `ftyp` no byte 4 |
+| zip | `PK\x03\x04`. Nunca é extraído |
+| docx, xlsx, pptx | zip + `[Content_Types].xml` + pasta `word/`, `xl/` ou `ppt/`; recusado se tiver `vbaProject.bin` (macro). Só a lista de arquivos do zip é lida (`yauzl`), nada é extraído |
+| txt, csv | sem byte nulo nem caracteres de controle. UTF-8 e ANSI (CSV do Excel) são aceitos; UTF-16 não |
+
+A extensão precisa estar na lista branca **e** o conteúdo precisa bater com ela. O
+`Content-Type` enviado pelo navegador é ignorado.
+
+### Ciclo de vida do arquivo
+
+1. Grava como `.localdrop-<uuid>.part` dentro de `recebidos/`.
+2. Se tudo estiver certo, reserva o nome final criando um arquivo vazio com a flag `wx` (falha
+   se já existir). Isso é atômico: dois envios de `foto.jpg` ao mesmo tempo viram `foto.jpg` e
+   `foto (1).jpg`, nunca um sobrescrevendo o outro.
+3. Renomeia o `.part` para o nome final (com nova tentativa se o antivírus estiver segurando o
+   arquivo).
+4. Grava a marca `Zone.Identifier` ("baixado da internet"), como os navegadores fazem. O Word
+   abre em Modo Protegido e o Windows avisa antes de abrir algo suspeito.
+
+Se a conexão cair, o arquivo for recusado ou algo falhar, o `.part` é apagado. Sobras de uma
+execução interrompida são apagadas ao iniciar.
+
+### Nomes de arquivo
+
+`nomes.ts` trata o nome como dado não confiável: fica só com a última parte (bloqueia
+`../../`), troca caracteres proibidos no Windows, remove ponto e espaço no final, prefixa nomes
+reservados (`CON`, `NUL`, `COM1`...) com `_` e limita a 150 caracteres sem quebrar emoji.
+`caminhoDentroDe` confere de novo que o caminho final está dentro da pasta.
+
+### Limites e proteção
+
+- 5 PINs errados bloqueiam aquele IP por 5 minutos (`tentativas.ts`).
+- Até 3 envios simultâneos.
+- Recusa se o espaço livre em disco for menor que o tamanho do envio mais 100 MB de reserva.
+- O timeout total de requisição do Node (5 min) foi desligado para vídeos grandes. No lugar
+  dele, 60 s sem receber nenhum byte derrubam o envio.
+- Quando a resposta de erro sai antes do corpo terminar de chegar, a conexão é fechada
+  (`Connection: close`).

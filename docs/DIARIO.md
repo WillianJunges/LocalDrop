@@ -51,3 +51,55 @@ Registro real de cada fase, para servir de base aos posts no LinkedIn.
 - Tela do PC com o QR Code (dá para borrar o PIN, que muda a cada execução).
 - Celular abrindo a página pelo QR.
 - Terminal com os testes passando.
+
+## Fase 2: upload seguro (21/10/2026)
+
+**O que foi construído**
+- Rota de upload com PIN, bloqueio por tentativas e limite de envios simultâneos.
+- Lista branca com 15 extensões, conferindo o **conteúdo** de cada arquivo: um `.exe`
+  renomeado para `.pdf` é recusado.
+- docx/xlsx/pptx são conferidos por dentro, e documentos com macro são recusados.
+- Upload em streaming: arquivos grandes vão direto para o disco, sem passar pela memória.
+- Arquivos incompletos (`.part`) são apagados se a conexão cair.
+- Nomes repetidos ganham sufixo, nunca sobrescrevem.
+- Arquivos recebidos ganham a marca "baixado da internet" do Windows.
+- Página provisória no celular para escolher e enviar arquivos.
+- 132 testes automatizados (eram 57).
+
+**Dificuldades e descobertas**
+- **Git:** o primeiro `push` foi recusado porque o repositório no GitHub foi criado com um
+  README, e as duas histórias não tinham nada em comum. Recriei o repositório vazio.
+- **Nome de branch não pode terminar com ponto:** `git switch -c feat/upload-seguro.` falha.
+  Detalhe bobo que custou alguns minutos.
+- **`feat` x `chore`:** aprendi que o tipo do commit descreve o que ele entrega, não o momento
+  do projeto. O primeiro commit já entregava funcionalidade, então era `feat`.
+- **Um arquivo `.docx` é um zip.** Para saber se ele é mesmo um documento do Word, e se tem
+  macro, foi preciso olhar a lista de arquivos dentro do zip, sem extrair nada.
+- **Windows tem nomes proibidos:** um arquivo chamado `CON.txt` não pode ser criado. Isso
+  virou teste.
+- **CSV do Excel brasileiro não é UTF-8** (é ANSI). Uma validação de texto "estrita" recusaria
+  planilhas legítimas, então a regra virou "sem bytes nulos nem caracteres de controle".
+- **Um teste que eu (Claude) escrevi estava com a expectativa errada:** esperava manter um espaço
+  antes da extensão (`demais .pdf`), mas o comportamento certo é removê-lo. O teste foi corrigido, não o
+  código.
+- **Porta ocupada no teste final:** o servidor da Fase 1 ainda estava aberto. A mensagem de
+  "porta em uso" da Fase 1 funcionou como planejado, e o teste rodou na 8788.
+
+**Como o Claude ajudou**
+- Desenhou a validação por conteúdo, o ciclo do arquivo `.part` e a reserva atômica de nomes.
+- Escreveu os testes, incluindo upload de 300 MB medindo a memória e conexão derrubada no meio.
+- Validou pela rede real: PDF salvo, duplicado virou `teste (1).pdf`, exe disfarçado e PIN
+  errado recusados, marca do Windows gravada.
+- O que eu decidi: aprovar a marca "baixado da internet" e o limite de 3 envios simultâneos,
+  além de cuidar de toda a parte de Git.
+
+**Números**
+- 132 testes, passando 4 vezes seguidas (para garantir que não são instáveis).
+- Upload de 300 MB nos testes com menos de 100 MB de aumento de memória.
+
+**Prints para tirar**
+- Terminal com os 132 testes passando.
+- Celular mostrando um envio com sucesso e um recusado (ex.: `.exe`).
+- Pasta `recebidos/` com `foto.jpg` e `foto (1).jpg`.
+- Propriedades de um arquivo recebido no Windows, mostrando o aviso "Este arquivo veio de outro
+  computador".

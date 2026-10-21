@@ -1,12 +1,15 @@
 import { mkdirSync } from 'node:fs';
 import { criarApp } from './app.js';
+import { limparTemporarios } from './armazenamento.js';
 import { carregarConfig } from './config.js';
 import { escolherIpLocal } from './rede.js';
 import { gerarPin } from './sessao.js';
 
-function iniciar(): void {
+async function iniciar(): Promise<void> {
   const config = carregarConfig();
   mkdirSync(config.pastaRecebidos, { recursive: true });
+  const sobras = await limparTemporarios(config.pastaRecebidos);
+  if (sobras > 0) console.log(`  ${sobras} envio(s) incompleto(s) da última execução apagado(s).`);
 
   const rede = escolherIpLocal();
   const pin = gerarPin();
@@ -18,10 +21,13 @@ function iniciar(): void {
       interfaceNome: rede.escolhido?.interfaceNome ?? null,
     },
     pastaClient: config.pastaClient,
+    pastaRecebidos: config.pastaRecebidos,
   });
 
   // Sem host: escuta em todas as interfaces (IPv4 e IPv6), inclusive o Wi-Fi.
   const servidor = app.listen(config.porta);
+  // O padrão do Node (5 min) cortaria vídeos grandes; a rota de upload controla a inatividade.
+  servidor.requestTimeout = 0;
 
   servidor.on('listening', () => {
     console.log('\n  LocalDrop rodando\n');
@@ -68,9 +74,7 @@ function iniciar(): void {
   process.on('SIGTERM', () => encerrar('SIGTERM'));
 }
 
-try {
-  iniciar();
-} catch (erro) {
+iniciar().catch((erro: unknown) => {
   console.error('\n  Não foi possível iniciar o LocalDrop:', erro instanceof Error ? erro.message : erro, '\n');
   process.exit(1);
-}
+});

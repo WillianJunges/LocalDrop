@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import express, { type ErrorRequestHandler, type Request, type Response } from 'express';
 import { somenteNoPc } from './loopback.js';
+import { criarRotaUpload, type OpcoesUpload } from './upload.js';
 
 export interface InfoSessao {
   pin: string;
@@ -13,9 +14,12 @@ export interface InfoSessao {
 export interface OpcoesApp {
   sessao: InfoSessao;
   pastaClient: string;
+  pastaRecebidos: string;
+  /** Permite aos testes trocar limites, tempo de inatividade etc. */
+  upload?: Omit<OpcoesUpload, 'pin' | 'pasta'>;
 }
 
-export function criarApp({ sessao, pastaClient }: OpcoesApp) {
+export function criarApp({ sessao, pastaClient, pastaRecebidos, upload }: OpcoesApp) {
   const app = express();
   app.disable('x-powered-by');
 
@@ -29,6 +33,8 @@ export function criarApp({ sessao, pastaClient }: OpcoesApp) {
       interfaceNome: sessao.interfaceNome,
     });
   });
+
+  app.post('/api/upload', criarRotaUpload({ ...upload, pin: sessao.pin, pasta: pastaRecebidos }));
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ erro: 'Rota não encontrada.' });
