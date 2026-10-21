@@ -11,6 +11,7 @@ writeFileSync(path.join(pastaClient, 'index.html'), '<!doctype html><title>Local
 const app = criarApp({
   sessao: { pin: '123456', porta: 8787, ip: '192.168.0.42', interfaceNome: 'Wi-Fi' },
   pastaClient,
+  pastaRecebidos: pastaClient,
 });
 
 afterAll(() => rmSync(pastaClient, { recursive: true, force: true }));
@@ -62,6 +63,7 @@ describe('páginas', () => {
     const semBuild = criarApp({
       sessao: { pin: '123456', porta: 8787, ip: null, interfaceNome: null },
       pastaClient: path.join(pastaClient, 'nao-existe'),
+      pastaRecebidos: pastaClient,
     });
     const res = await request(semBuild).get('/');
     expect(res.status).toBe(503);

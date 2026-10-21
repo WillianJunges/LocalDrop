@@ -3,14 +3,26 @@
 Envie arquivos do celular Android para o PC Windows pelo Wi-Fi de casa.
 Sem nuvem, sem cabo, sem conta, sem instalar app no celular.
 
-> Projeto pessoal em construção. Fase atual: **1 de 4** (servidor, tela do PC com QR Code e PIN).
+> Projeto pessoal em construção. Fase atual: **2 de 4** (upload seguro; interface do celular ainda provisória).
 
 ## Como funciona
 
 1. Você inicia o LocalDrop no PC.
 2. A tela do PC mostra um QR Code e um PIN de 6 dígitos.
 3. Você escaneia o QR Code com o celular (no mesmo Wi-Fi) e a página abre no navegador.
-4. *(Fase 2 e 3)* Você escolhe os arquivos e eles chegam na pasta `recebidos/`.
+4. Você escolhe os arquivos e eles chegam na pasta `recebidos/`.
+
+## Arquivos aceitos
+
+| Categoria | Extensões | Limite |
+|---|---|---|
+| Imagens | jpg, jpeg, png, webp, gif | 50 MB |
+| Documentos | pdf, docx, xlsx, pptx, txt, csv | 50 MB |
+| Áudio | mp3, m4a | 200 MB |
+| Vídeo | mp4 | 4 GB |
+| Compactados | zip | 2 GB |
+
+O conteúdo de cada arquivo é conferido, não só a extensão. Executáveis, scripts e documentos com macro são recusados.
 
 ## Requisitos
 
@@ -68,8 +80,9 @@ Em `npm run dev`, abra `http://localhost:5173/pc`. Para testar no celular, use `
 
 ## Segurança
 
-Veja [docs/DECISOES.md](docs/DECISOES.md). Resumo: PIN por sessão, tela do PIN acessível só no
-próprio PC e nenhum dado sai da rede local. A conexão é HTTP sem criptografia dentro da rede
+Veja [docs/DECISOES.md](docs/DECISOES.md). Resumo: PIN por sessão com bloqueio após tentativas erradas,
+tela do PIN acessível só no próprio PC, validação do conteúdo dos arquivos, nomes sanitizados
+(sem path traversal nem sobrescrita) e nenhum dado sai da rede local. A conexão é HTTP sem criptografia dentro da rede
 local, então use em redes em que você confia.
 
 ## Stack

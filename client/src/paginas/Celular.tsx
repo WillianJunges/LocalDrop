@@ -29,9 +29,43 @@ function guardarPin(pin: string) {
   }
 }
 
+interface Resultado {
+  arquivo: string;
+  ok: boolean;
+  mensagem: string;
+}
+
+// Versão provisória (Fase 2): envia um por vez, sem barra de progresso. A Fase 3 refaz a interface.
+async function enviarArquivo(arquivo: File, pin: string): Promise<Resultado> {
+  const corpo = new FormData();
+  corpo.append('arquivo', arquivo);
+  try {
+    const resposta = await fetch('/api/upload', { method: 'POST', headers: { 'X-LocalDrop-Pin': pin }, body: corpo });
+    const dados = (await resposta.json()) as { ok: boolean; nome?: string; motivo?: string };
+    return dados.ok
+      ? { arquivo: arquivo.name, ok: true, mensagem: `Salvo como ${dados.nome}` }
+      : { arquivo: arquivo.name, ok: false, mensagem: dados.motivo ?? 'Erro desconhecido.' };
+  } catch {
+    return { arquivo: arquivo.name, ok: false, mensagem: 'Falha de conexão com o computador.' };
+  }
+}
+
 export function Celular() {
   const [pin, setPin] = useState(lerPinInicial);
+  const [arquivos, setArquivos] = useState<File[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [resultados, setResultados] = useState<Resultado[]>([]);
   const pinValido = /^\d{6}$/.test(pin);
+
+  async function enviar() {
+    setEnviando(true);
+    setResultados([]);
+    for (const arquivo of arquivos) {
+      const resultado = await enviarArquivo(arquivo, pin);
+      setResultados((anteriores) => [...anteriores, resultado]);
+    }
+    setEnviando(false);
+  }
 
   return (
     <main className="pagina pagina-celular">
@@ -57,7 +91,31 @@ export function Celular() {
       </label>
       <p className="dica">{pinValido ? 'PIN preenchido.' : 'Digite os 6 dígitos do PIN.'}</p>
 
-      <p className="dica">O envio de arquivos chega na próxima etapa do projeto.</p>
+      <label className="campo">
+        Arquivos
+        <input
+          type="file"
+          multiple
+          disabled={enviando}
+          onChange={(e) => setArquivos(Array.from(e.target.files ?? []))}
+        />
+      </label>
+
+      <button type="button" className="botao" disabled={!pinValido || arquivos.length === 0 || enviando} onClick={enviar}>
+        {enviando ? `Enviando ${resultados.length + 1} de ${arquivos.length}…` : 'Enviar'}
+      </button>
+
+      {resultados.length > 0 && (
+        <ul className="resultados" aria-live="polite">
+          {resultados.map((r, i) => (
+            <li key={i} className={r.ok ? 'aviso aviso-ok' : 'aviso aviso-erro'}>
+              <strong>{r.ok ? '✓ Enviado' : '✗ Falhou'}:</strong> {r.arquivo}
+              <br />
+              <span className="dica">{r.mensagem}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }

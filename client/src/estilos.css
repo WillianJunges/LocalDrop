@@ -146,6 +146,38 @@ h2 {
   font-weight: 600;
 }
 
+.botao {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--destaque);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.botao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.resultados {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  word-break: break-word;
+}
+
+.campo input[type='file'] {
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+
 .campo input {
   padding: 12px;
   font-size: 1.5rem;
