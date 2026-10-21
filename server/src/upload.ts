@@ -8,13 +8,11 @@ import type { Request, RequestHandler, Response } from 'express';
 import { caminhoTemporario, espacoLivre, marcarComoDaInternet, mover } from './armazenamento.js';
 import { reservarNomeLivre, sanitizarNome } from './nomes.js';
 import { ehOffice, motivoOfficeInvalido } from './office.js';
-import { pinConfere } from './sessao.js';
-import { ControleTentativas } from './tentativas.js';
 import { type Categoria, categoriaDe, extensaoDe, LIMITES_PADRAO } from './tipos.js';
 import { criarFiscal, ErroUpload } from './validacao.js';
 
+/** O PIN é conferido antes, pelo middleware exigirPin (pin.ts). */
 export interface OpcoesUpload {
-  pin: string;
   pasta: string;
   limites?: Readonly<Record<Categoria, number>>;
   maxSimultaneos?: number;
@@ -22,7 +20,6 @@ export interface OpcoesUpload {
   inatividadeMs?: number;
   /** Espaço que sempre deve sobrar no disco, além do arquivo. */
   reservaDiscoBytes?: number;
-  tentativas?: ControleTentativas;
 }
 
 export interface ArquivoSalvo {
@@ -39,24 +36,9 @@ export function criarRotaUpload(opcoes: OpcoesUpload): RequestHandler {
   const maxSimultaneos = opcoes.maxSimultaneos ?? 3;
   const inatividadeMs = opcoes.inatividadeMs ?? 60_000;
   const reservaDisco = opcoes.reservaDiscoBytes ?? 100 * 1024 ** 2;
-  const tentativas = opcoes.tentativas ?? new ControleTentativas();
   let ativos = 0;
 
   return async (req, res) => {
-    const ip = req.socket.remoteAddress ?? 'desconhecido';
-
-    const bloqueio = tentativas.bloqueadoPor(ip);
-    if (bloqueio > 0) {
-      responderErro(res, 429, `Muitas tentativas com PIN errado. Tente de novo em ${Math.ceil(bloqueio / 60_000)} min.`);
-      return;
-    }
-    if (!pinConfere(opcoes.pin, req.get('x-localdrop-pin'))) {
-      tentativas.registrarErro(ip);
-      responderErro(res, 401, 'PIN incorreto. Confira o PIN na tela do computador.');
-      return;
-    }
-    tentativas.limpar(ip);
-
     if (!req.is('multipart/form-data')) {
       responderErro(res, 400, 'Envio inválido.');
       return;

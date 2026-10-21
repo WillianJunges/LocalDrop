@@ -1,121 +1,191 @@
-import { useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { ItemArquivo } from '../componentes/ItemArquivo';
+import { formatarDuracao, formatarVelocidade } from '../envio/medidor';
+import { ACEITOS_ARQUIVOS, ACEITOS_GALERIA, formatarBytes } from '../envio/regras';
+import { type Lote, useFilaEnvio } from '../envio/useFilaEnvio';
+import { type EstadoPin, usePin } from '../envio/usePin';
 
-const CHAVE_PIN = 'localdrop:pin';
-
-/**
- * Lê o PIN do fragmento (#pin=123456) e tira ele da barra de endereço,
- * para não ficar visível nem ir junto se o link for compartilhado.
- */
-function lerPinInicial(): string {
-  const doFragmento = new URLSearchParams(window.location.hash.slice(1)).get('pin');
-  if (doFragmento && /^\d{6}$/.test(doFragmento)) {
-    history.replaceState(null, '', window.location.pathname);
-    guardarPin(doFragmento);
-    return doFragmento;
-  }
-  try {
-    return sessionStorage.getItem(CHAVE_PIN) ?? '';
-  } catch {
-    // Navegação privada pode bloquear o sessionStorage; o usuário digita o PIN.
-    return '';
-  }
-}
-
-function guardarPin(pin: string) {
-  try {
-    sessionStorage.setItem(CHAVE_PIN, pin);
-  } catch {
-    // Sem sessionStorage o PIN fica só na memória desta aba.
-  }
-}
-
-interface Resultado {
-  arquivo: string;
-  ok: boolean;
-  mensagem: string;
-}
-
-// Versão provisória (Fase 2): envia um por vez, sem barra de progresso. A Fase 3 refaz a interface.
-async function enviarArquivo(arquivo: File, pin: string): Promise<Resultado> {
-  const corpo = new FormData();
-  corpo.append('arquivo', arquivo);
-  try {
-    const resposta = await fetch('/api/upload', { method: 'POST', headers: { 'X-LocalDrop-Pin': pin }, body: corpo });
-    const dados = (await resposta.json()) as { ok: boolean; nome?: string; motivo?: string };
-    return dados.ok
-      ? { arquivo: arquivo.name, ok: true, mensagem: `Salvo como ${dados.nome}` }
-      : { arquivo: arquivo.name, ok: false, mensagem: dados.motivo ?? 'Erro desconhecido.' };
-  } catch {
-    return { arquivo: arquivo.name, ok: false, mensagem: 'Falha de conexão com o computador.' };
-  }
-}
+const TEXTO_PIN: Record<EstadoPin, string> = {
+  incompleto: 'Digite os 6 dígitos mostrados na tela do computador.',
+  conferindo: 'Conferindo…',
+  confirmado: '✓ PIN confirmado.',
+  errado: '✗ PIN incorreto.',
+  bloqueado: '✗ Bloqueado por tentativas erradas.',
+  'sem-conexao': '✗ Não foi possível falar com o computador.',
+};
 
 export function Celular() {
-  const [pin, setPin] = useState(lerPinInicial);
-  const [arquivos, setArquivos] = useState<File[]>([]);
-  const [enviando, setEnviando] = useState(false);
-  const [resultados, setResultados] = useState<Resultado[]>([]);
-  const pinValido = /^\d{6}$/.test(pin);
+  const { pin, setPin, estado: estadoPin, mensagem: mensagemPin } = usePin();
+  const fila = useFilaEnvio(pin);
+  const enviando = fila.lote !== null;
+  const pinOk = estadoPin === 'confirmado';
+  const recusados = fila.itens.filter((item) => item.status === 'recusado').length;
+  const bytesParaEnviar = fila.paraEnviar.reduce((soma, item) => soma + item.arquivo.size, 0);
+  const soFalhas = fila.paraEnviar.length > 0 && fila.paraEnviar.every((item) => item.status === 'falhou');
 
-  async function enviar() {
-    setEnviando(true);
-    setResultados([]);
-    for (const arquivo of arquivos) {
-      const resultado = await enviarArquivo(arquivo, pin);
-      setResultados((anteriores) => [...anteriores, resultado]);
-    }
-    setEnviando(false);
-  }
+  const aoEscolher = (evento: ChangeEvent<HTMLInputElement>) => {
+    fila.adicionar(Array.from(evento.target.files ?? []));
+    // Limpa o campo para permitir escolher os mesmos arquivos de novo depois.
+    evento.target.value = '';
+  };
 
   return (
     <main className="pagina pagina-celular">
       <h1>LocalDrop</h1>
-      <p className="aviso aviso-ok" role="status">
-        <strong>Conectado</strong> ao computador.
+
+      <section aria-labelledby="titulo-pin">
+        <label className="campo" id="titulo-pin">
+          PIN
+          <input
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={pin}
+            disabled={enviando}
+            aria-invalid={estadoPin === 'errado' || fila.aviso?.doPin === true}
+            aria-describedby="estado-pin"
+            onChange={(e) => setPin(e.target.value)}
+          />
+        </label>
+        <p id="estado-pin" className={`dica estado-pin estado-pin-${estadoPin}`} role="status">
+          {TEXTO_PIN[estadoPin]}
+          {(estadoPin === 'bloqueado' || estadoPin === 'sem-conexao') && mensagemPin && ` ${mensagemPin}`}
+        </p>
+      </section>
+
+      <section className="seletores" aria-label="Escolher arquivos">
+        <label className={`botao-secundario ${enviando ? 'desativado' : ''}`}>
+          <input
+            className="visualmente-oculto"
+            type="file"
+            multiple
+            accept={ACEITOS_GALERIA}
+            disabled={enviando}
+            onChange={aoEscolher}
+          />
+          <span aria-hidden="true">📷</span> Fotos e vídeos
+        </label>
+        <label className={`botao-secundario ${enviando ? 'desativado' : ''}`}>
+          <input
+            className="visualmente-oculto"
+            type="file"
+            multiple
+            accept={ACEITOS_ARQUIVOS}
+            disabled={enviando}
+            onChange={aoEscolher}
+          />
+          <span aria-hidden="true">📁</span> Arquivos
+        </label>
+      </section>
+      <p className="dica">
+        Para marcar vários, <strong>toque e segure</strong> no primeiro arquivo e depois toque nos outros. Dá para
+        escolher em várias rodadas: a lista vai somando.
       </p>
 
-      <label className="campo">
-        PIN mostrado na tela do computador
-        <input
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="\d{6}"
-          maxLength={6}
-          value={pin}
-          onChange={(e) => {
-            const novo = e.target.value.replace(/\D/g, '').slice(0, 6);
-            setPin(novo);
-            guardarPin(novo);
-          }}
-        />
-      </label>
-      <p className="dica">{pinValido ? 'PIN preenchido.' : 'Digite os 6 dígitos do PIN.'}</p>
+      {fila.aviso && (
+        <div className={`aviso aviso-${fila.aviso.tipo}`} role="alert">
+          <span>{fila.aviso.texto}</span>
+          <button type="button" className="botao-texto" onClick={fila.fecharAviso}>
+            Fechar
+          </button>
+        </div>
+      )}
 
-      <label className="campo">
-        Arquivos
-        <input
-          type="file"
-          multiple
-          disabled={enviando}
-          onChange={(e) => setArquivos(Array.from(e.target.files ?? []))}
-        />
-      </label>
+      {fila.lote && <ResumoLote lote={fila.lote} telaTravadaLigada={fila.telaTravadaLigada} />}
 
-      <button type="button" className="botao" disabled={!pinValido || arquivos.length === 0 || enviando} onClick={enviar}>
-        {enviando ? `Enviando ${resultados.length + 1} de ${arquivos.length}…` : 'Enviar'}
-      </button>
+      {fila.itens.length > 0 && (
+        <section aria-labelledby="titulo-lista">
+          <div className="cabecalho-lista">
+            <h2 id="titulo-lista">Para enviar ({fila.itens.length})</h2>
+            {recusados > 0 && !enviando && (
+              <button type="button" className="botao-texto" onClick={fila.removerRecusados}>
+                Remover recusados
+              </button>
+            )}
+          </div>
+          <ul className="lista">
+            {fila.itens.map((item) => (
+              <ItemArquivo key={item.id} item={item} bloqueado={enviando} onRemover={fila.remover} />
+            ))}
+          </ul>
+        </section>
+      )}
 
-      {resultados.length > 0 && (
-        <ul className="resultados" aria-live="polite">
-          {resultados.map((r, i) => (
-            <li key={i} className={r.ok ? 'aviso aviso-ok' : 'aviso aviso-erro'}>
-              <strong>{r.ok ? '✓ Enviado' : '✗ Falhou'}:</strong> {r.arquivo}
-              <br />
-              <span className="dica">{r.mensagem}</span>
-            </li>
-          ))}
-        </ul>
+      {fila.itens.length === 0 && fila.enviados.length === 0 && (
+        <p className="vazio">Nenhum arquivo escolhido ainda.</p>
+      )}
+
+      <div className="acoes">
+        {enviando ? (
+          <button type="button" className="botao botao-perigo" onClick={fila.cancelar}>
+            Cancelar envio
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="botao"
+            disabled={!pinOk || fila.paraEnviar.length === 0}
+            onClick={fila.enviarTodos}
+          >
+            {fila.paraEnviar.length === 0
+              ? 'Enviar'
+              : `${soFalhas ? 'Tentar de novo' : 'Enviar'} ${fila.paraEnviar.length} ${
+                  fila.paraEnviar.length === 1 ? 'arquivo' : 'arquivos'
+                } (${formatarBytes(bytesParaEnviar)})`}
+          </button>
+        )}
+        {!pinOk && fila.paraEnviar.length > 0 && !enviando && (
+          <p className="dica">Confirme o PIN para liberar o envio.</p>
+        )}
+      </div>
+
+      {fila.enviados.length > 0 && (
+        <section className="enviados" aria-labelledby="titulo-enviados">
+          <details>
+            <summary id="titulo-enviados">
+              ✓ Enviados nesta sessão ({fila.enviados.length})
+            </summary>
+            <ul>
+              {fila.enviados.map((enviado) => (
+                <li key={enviado.id}>
+                  {enviado.nomeSalvo}
+                  {enviado.nomeSalvo !== enviado.nomeOriginal && (
+                    <span className="dica"> (já existia um com o nome {enviado.nomeOriginal})</span>
+                  )}
+                  <span className="dica"> · {formatarBytes(enviado.tamanho)}</span>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="botao-texto" onClick={fila.limparEnviados}>
+              Limpar lista
+            </button>
+          </details>
+        </section>
       )}
     </main>
+  );
+}
+
+function ResumoLote({ lote, telaTravadaLigada }: { lote: Lote; telaTravadaLigada: boolean }) {
+  const porcentagem = lote.totalBytes > 0 ? Math.floor((lote.bytesEnviados / lote.totalBytes) * 100) : 0;
+
+  return (
+    <section className="resumo-lote" aria-label="Progresso geral">
+      <p className="resumo-titulo">
+        Enviando {lote.posicao} de {lote.totalArquivos} · {porcentagem}%
+      </p>
+      <progress value={lote.bytesEnviados} max={lote.totalBytes} aria-label={`Progresso geral: ${porcentagem}%`} />
+      <p className="dica">
+        {formatarBytes(lote.bytesEnviados)} de {formatarBytes(lote.totalBytes)}
+        {lote.bytesPorSegundo !== null && ` · ${formatarVelocidade(lote.bytesPorSegundo)}`}
+        {lote.segundosRestantes !== null && ` · faltam cerca de ${formatarDuracao(lote.segundosRestantes)}`}
+      </p>
+      {!telaTravadaLigada && (
+        <p className="dica">
+          <strong>Mantenha a tela ligada e esta página aberta</strong> até terminar. Se o celular bloquear, o envio
+          pode parar.
+        </p>
+      )}
+    </section>
   );
 }

@@ -238,14 +238,22 @@ Ao final de cada fase, entregue de forma curta:
 1. **O que foi feito**, arquivos criados/alterados e decisões tomadas.
 2. **Testes e verificações executados**, com o resultado real. O que não
    pôde rodar, diga exatamente o que e por quê.
-3. **Git**, já adaptado ao que mudou:
-   - branch sugerida (ex.: `feat/upload-seguro`);
-   - `git status` / `git diff --stat` para revisar;
-   - `git add` com caminhos específicos (evitar `git add .` às cegas;
-     conferir que nada de `recebidos/` entrou);
-   - mensagem de commit em Conventional Commits, em português
-     (`feat`, `fix`, `docs`, `test`, `refactor`, `build`, `chore`);
-   - `git push` e título + descrição curta do PR.
+3. **Tutorial Git em arquivo**: criar
+   `tutoriais-git/Tutorial Git - Fase N <Nome>.txt` (pasta no `.gitignore`),
+   no mesmo padrão dos meus tutoriais em `C:\Users\wikka\Desktop\TG\PI`
+   (ex.: `Tutorial Git - Retirada no Local.txt`). Texto puro, com:
+   - cabeçalho com o nome da fase, a branch e o estado dela (já criada ou
+     não, com ou sem commit) e um bloco "ANTES:" se houver algo a fazer antes;
+   - **1. COMMIT E PUSH**: `git status`, `git add .`, `git status` com
+     "-> confira:" dizendo o que deve e o que não pode aparecer, commit em
+     Conventional Commits (português, sem acentos na mensagem) e `git push -u`;
+   - **2. PRINTS**: como subir o app e a lista numerada de prints a tirar;
+   - **3. PULL REQUEST**: base/compare, título e a descrição em markdown entre
+     linhas `===` (O que foi feito, com subtítulos em negrito, Testes, Para
+     testar, tabela de Prints com `<img src="COLE_AQUI_O_LINK_N">`) e a
+     instrução de como colar os links dos prints;
+   - **4. DEPOIS DO MERGE**: `git switch main`, `git pull`,
+     `git branch -d`, `git fetch --prune` e a branch da próxima fase.
    Só execute commits, push ou PRs se eu pedir explicitamente.
 4. **Diário atualizado** (`docs/DIARIO.md`) e **rascunho do post da fase**
    (seção 7.2).

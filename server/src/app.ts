@@ -2,6 +2,8 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import express, { type ErrorRequestHandler, type Request, type Response } from 'express';
 import { somenteNoPc } from './loopback.js';
+import { exigirPin } from './pin.js';
+import { ControleTentativas } from './tentativas.js';
 import { criarRotaUpload, type OpcoesUpload } from './upload.js';
 
 export interface InfoSessao {
@@ -16,7 +18,7 @@ export interface OpcoesApp {
   pastaClient: string;
   pastaRecebidos: string;
   /** Permite aos testes trocar limites, tempo de inatividade etc. */
-  upload?: Omit<OpcoesUpload, 'pin' | 'pasta'>;
+  upload?: Omit<OpcoesUpload, 'pasta'>;
 }
 
 export function criarApp({ sessao, pastaClient, pastaRecebidos, upload }: OpcoesApp) {
@@ -34,7 +36,14 @@ export function criarApp({ sessao, pastaClient, pastaRecebidos, upload }: Opcoes
     });
   });
 
-  app.post('/api/upload', criarRotaUpload({ ...upload, pin: sessao.pin, pasta: pastaRecebidos }));
+  // A mesma contagem de PINs errados vale para as duas rotas.
+  const pinObrigatorio = exigirPin(sessao.pin, new ControleTentativas());
+
+  // Checagem rápida, sem arquivo: o celular confirma o PIN antes de começar um envio grande.
+  app.post('/api/pin', pinObrigatorio, (_req, res) => {
+    res.json({ ok: true });
+  });
+  app.post('/api/upload', pinObrigatorio, criarRotaUpload({ ...upload, pasta: pastaRecebidos }));
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ erro: 'Rota não encontrada.' });
