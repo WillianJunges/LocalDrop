@@ -72,6 +72,21 @@ describe('PIN', () => {
     expect(res.status).toBe(429);
     expect(arquivosNaPasta()).toEqual([]);
   });
+
+  it('POST /api/pin confirma o PIN sem enviar arquivo', async () => {
+    const servidor = app();
+    expect((await request(servidor).post('/api/pin').set('X-LocalDrop-Pin', PIN)).body).toEqual({ ok: true });
+    expect((await request(servidor).post('/api/pin').set('X-LocalDrop-Pin', '999999')).status).toBe(401);
+    expect((await request(servidor).post('/api/pin')).status).toBe(401);
+  });
+
+  it('erros em /api/pin e /api/upload somam para o bloqueio', async () => {
+    const servidor = app();
+    for (let i = 0; i < 3; i++) await request(servidor).post('/api/pin').set('X-LocalDrop-Pin', '000000');
+    for (let i = 0; i < 2; i++) await enviar(servidor, JPEG, 'foto.jpg', '000000');
+
+    expect((await request(servidor).post('/api/pin').set('X-LocalDrop-Pin', PIN)).status).toBe(429);
+  });
 });
 
 describe('arquivos aceitos', () => {

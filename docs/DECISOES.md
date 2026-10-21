@@ -131,3 +131,60 @@ reservados (`CON`, `NUL`, `COM1`...) com `_` e limita a 150 caracteres sem quebr
   dele, 60 s sem receber nenhum byte derrubam o envio.
 - Quando a resposta de erro sai antes do corpo terminar de chegar, a conexão é fechada
   (`Connection: close`).
+
+## Fase 3
+
+### Conferir o PIN antes de enviar (`POST /api/pin`)
+
+Com o PIN errado, o servidor responde 401 logo no começo, mas o navegador só lê a resposta
+depois de mandar o corpo inteiro, e às vezes reporta apenas "erro de rede". Num vídeo de 2 GB
+isso seria minutos de envio jogados fora, com uma mensagem confusa. Agora o celular confere o
+PIN numa requisição sem arquivo, assim que os 6 dígitos são preenchidos e de novo antes de cada
+lote. O middleware `exigirPin` (`pin.ts`) é o mesmo para as duas rotas, e os erros somam para o
+bloqueio.
+
+### Uma única lista de tipos
+
+O front importa `server/src/tipos.ts` em vez de manter uma cópia. A lista do seletor de arquivos
+(`accept`), o aviso "tipo não permitido" e os limites mostrados no celular nunca ficam
+diferentes do que o servidor aceita. O servidor continua validando tudo.
+
+### Fila de envio
+
+- A lógica fica num reducer puro (`client/src/envio/fila.ts`), testado sem navegador.
+- Estados: `pronto`, `enviando`, `falhou` (temporário: rede, cancelado, erro no PC; pode
+  reenviar) e `recusado` (definitivo: tipo, conteúdo, limite; não adianta reenviar).
+- **Enviado sai da lista** e vai para o resumo "Enviados nesta sessão", que avisa quando o PC
+  renomeou o arquivo (`contrato (1).pdf`).
+- A seleção **acumula** (várias rodadas) e ignora o mesmo arquivo escolhido de novo.
+- Um arquivo por vez, com XMLHttpRequest, porque o `fetch` não informa progresso de upload.
+- Se a rede cai, a fila para em vez de falhar arquivo por arquivo; "Tentar de novo" continua de
+  onde parou. PIN errado ou bloqueio também param a fila.
+- Cancelar aborta o envio atual (o servidor apaga o `.part`) e devolve o item para a lista.
+
+### Progresso e velocidade
+
+- Progresso real por arquivo e do lote, convertendo o progresso do multipart para bytes do
+  arquivo.
+- Velocidade = média dos últimos 3 s (`MedidorVelocidade`). Reage a mudanças no Wi-Fi sem ficar
+  pulando a cada evento. O tempo restante vem dessa média.
+- Quando o upload chega a 100% e o PC ainda está validando (ex.: docx), a tela mostra
+  "Finalizando no computador…".
+
+### Seleção no Android
+
+Dois botões: **"Fotos e vídeos"** (`accept` com tipos de imagem e `video/mp4`, que abre a
+galeria, onde marcar vários é natural) e **"Arquivos"** (`accept` com as extensões da lista,
+que abre o gerenciador de arquivos). A tela explica o "toque e segure" para marcar vários.
+
+### Limitações do HTTP na rede local
+
+O navegador trata `http://192.168.x.x` como contexto **não seguro**. Algumas APIs só existem em
+HTTPS:
+
+- **Wake Lock** (manter a tela ligada): não disponível. A página tenta usar quando existe; se
+  não, mostra "mantenha a tela ligada e esta página aberta" durante o envio.
+- **`crypto.randomUUID`**: não disponível. Os IDs da fila são um contador simples.
+
+A página também pede confirmação antes de fechar enquanto há um envio em andamento
+(`beforeunload`).

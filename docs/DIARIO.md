@@ -103,3 +103,56 @@ Registro real de cada fase, para servir de base aos posts no LinkedIn.
 - Pasta `recebidos/` com `foto.jpg` e `foto (1).jpg`.
 - Propriedades de um arquivo recebido no Windows, mostrando o aviso "Este arquivo veio de outro
   computador".
+
+## Fase 3: interface do celular (21/10/2026)
+
+**O que foi construído**
+- Página do celular refeita: lista com miniatura (imagens) ou ícone por tipo, tamanho e status
+  de cada arquivo.
+- Arquivos fora da lista ou acima do limite são marcados já na seleção, antes de enviar.
+- Progresso real por arquivo e do lote, com velocidade e tempo restante.
+- Cancelar envio, "Tentar de novo" só para os que falharam e "Remover recusados".
+- Arquivo enviado sai da lista e vai para o resumo "Enviados nesta sessão".
+- Dois botões de seleção (galeria e arquivos), seleção que acumula em várias rodadas.
+- PIN conferido assim que é preenchido, com nova rota `POST /api/pin`.
+- 146 testes (134 no servidor e 12 novos no front).
+
+**Dificuldades e descobertas**
+- **Feedback de uso real:** testando a versão provisória no celular, percebi que o arquivo
+  enviado continuava na lista e que não era óbvio como selecionar vários. As duas coisas
+  viraram requisito desta fase.
+- **No Android, selecionar vários não é intuitivo:** o campo já aceitava vários, mas é preciso
+  "tocar e segurar". A solução foi um botão que abre a galeria, uma dica na tela e a seleção que
+  vai somando.
+- **PIN errado em upload grande:** o servidor recusa na hora, mas o navegador só percebe depois
+  de mandar o arquivo inteiro, às vezes como "erro de rede". Daí a checagem de PIN antes do
+  envio.
+- **HTTP na rede local tem limitações:** a API que mantém a tela ligada (Wake Lock) e o
+  `crypto.randomUUID` só funcionam em HTTPS. Ficou o aviso na tela e um contador para os IDs.
+- **Bug pego pelo teste:** o medidor de velocidade guardava uma amostra antiga, e a velocidade
+  demorava a cair quando o Wi-Fi ficava lento. O teste escrito antes revelou o erro, e o código
+  foi corrigido.
+- **Aviso vermelho para sucesso parcial:** "3 enviados, 1 com problema" aparecia como erro.
+  Virou um aviso amarelo.
+
+**Como o Claude ajudou**
+- Reorganizou o front em fila (reducer puro), API (XHR com progresso) e medidor de velocidade,
+  todos testáveis.
+- Abriu a página no Chrome e fez um envio real: PIN do QR confirmado sozinho, `.apk` recusado
+  na seleção, PDF falso recusado pelo servidor, enviados saindo da lista e `contrato (1).pdf`
+  identificado como renomeado. Sem erros no console.
+- Ponto não verificado visualmente: a barra de progresso. No PC o envio é instantâneo; ela
+  aparece no teste com um vídeo grande pelo Wi-Fi.
+- O que eu decidi: que o enviado deve sair da lista e que selecionar vários precisava ficar
+  mais fácil.
+
+**Números**
+- 146 testes (134 servidor + 12 front).
+- Bundle do front: 83 KB gzip.
+
+**Prints para tirar**
+- Lista com miniaturas e um arquivo recusado já na seleção.
+- Envio de um vídeo grande mostrando a barra, a velocidade e o tempo restante (o melhor print
+  da fase; vale um GIF).
+- Aviso "Pronto! N arquivos enviados" com a seção "Enviados nesta sessão" aberta.
+- Seletor de galeria do Android com várias fotos marcadas.

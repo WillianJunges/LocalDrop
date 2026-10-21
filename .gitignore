@@ -22,3 +22,6 @@ Desktop.ini
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Tutoriais Git pessoais (passo a passo de cada fase)
+tutoriais-git/

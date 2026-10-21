@@ -57,5 +57,5 @@ export function formatarBytes(bytes: number): string {
   if (bytes >= GB) return `${+(bytes / GB).toFixed(1)} GB`;
   if (bytes >= MB) return `${+(bytes / MB).toFixed(1)} MB`;
   if (bytes >= 1024) return `${+(bytes / 1024).toFixed(1)} KB`;
-  return `${bytes} bytes`;
+  return bytes === 1 ? '1 byte' : `${bytes} bytes`;
 }

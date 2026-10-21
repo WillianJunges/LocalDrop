@@ -3,7 +3,7 @@
 Envie arquivos do celular Android para o PC Windows pelo Wi-Fi de casa.
 Sem nuvem, sem cabo, sem conta, sem instalar app no celular.
 
-> Projeto pessoal em construção. Fase atual: **2 de 4** (upload seguro; interface do celular ainda provisória).
+> Projeto pessoal em construção. Fase atual: **3 de 4** (interface do celular com progresso, velocidade e reenvio).
 
 ## Como funciona
 
@@ -55,7 +55,7 @@ Marque **apenas "Redes privadas"**. Não é preciso (nem recomendado) desativar 
 | `npm run dev`       | Servidor + Vite com recarregamento automático (só acessível no PC)  |
 | `npm run build`     | Compila front e back                                                |
 | `npm start`         | Roda a versão compilada (é a que o celular acessa)                  |
-| `npm test`          | Testes automatizados                                                |
+| `npm test`          | Testes automatizados (servidor e front)                             |
 | `npm run typecheck` | Verificação de tipos                                                |
 
 Em `npm run dev`, abra `http://localhost:5173/pc`. Para testar no celular, use `npm run build && npm start`.
