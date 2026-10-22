@@ -164,5 +164,5 @@ Node.js · TypeScript · Express · React · Vite · Vitest · busboy · yauzl
 
 ## Como foi feito
 
-Projeto pessoal construído em 4 fases com o Claude Code, documentado em
+Projeto pessoal construído em 5 fases com o Claude Code, documentado em
 [docs/DIARIO.md](docs/DIARIO.md).
