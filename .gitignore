@@ -28,3 +28,6 @@ tutoriais-git/
 
 # Configuração local (pode ter caminhos pessoais). Modelo: localdrop.exemplo.json
 localdrop.json
+
+# Rascunho pessoal do post do LinkedIn (fica só no PC)
+docs/LINKEDIN.md

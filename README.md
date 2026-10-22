@@ -5,6 +5,19 @@ Sem nuvem, sem cabo, sem conta e sem instalar app no celular.
 
 <p align="center"><img src="client/src/assets/icone.svg" width="96" alt="Ícone do LocalDrop"></p>
 
+## Demonstração
+
+<table>
+  <tr>
+    <th>Tela do PC</th>
+    <th>Celular</th>
+  </tr>
+  <tr>
+    <td><img src="docs/DemonstracaoPC.gif" width="560" alt="Tela do PC com QR Code, PIN, instruções e a área para enviar arquivos ao celular"></td>
+    <td><img src="docs/DemonstracaoAndroid.jpg" width="220" alt="Página do LocalDrop no Android com o PIN confirmado e os botões para escolher fotos, vídeos e arquivos"></td>
+  </tr>
+</table>
+
 ## Como funciona
 
 1. Dois cliques no atalho **LocalDrop** da Área de Trabalho.
