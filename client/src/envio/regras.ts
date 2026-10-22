@@ -22,6 +22,10 @@ export const ACEITOS_ARQUIVOS = Object.keys(EXTENSOES_ACEITAS)
 /** Botão "Fotos e vídeos": no Android abre a galeria, onde marcar vários é mais fácil. */
 export const ACEITOS_GALERIA = 'image/jpeg,image/png,image/webp,image/gif,video/mp4';
 
+export function categoriaDoNome(nome: string): Categoria | null {
+  return categoriaDe(extensaoDe(nome));
+}
+
 export interface Avaliacao {
   categoria: Categoria | null;
   /** Motivo para não enviar, ou null se pode enviar. */

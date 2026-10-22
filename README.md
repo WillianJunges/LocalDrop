@@ -1,6 +1,6 @@
 # LocalDrop
 
-Envie arquivos do celular Android para o PC Windows pelo Wi-Fi de casa.
+Troque arquivos entre o celular Android e o PC Windows pelo Wi-Fi de casa, nos dois sentidos.
 Sem nuvem, sem cabo, sem conta e sem instalar app no celular.
 
 <p align="center"><img src="client/src/assets/icone.svg" width="96" alt="Ícone do LocalDrop"></p>
@@ -13,6 +13,13 @@ Sem nuvem, sem cabo, sem conta e sem instalar app no celular.
 4. Escolhe fotos, vídeos ou documentos e toca em **Enviar**.
 5. Acompanha o progresso, a velocidade e o tempo restante.
 6. Os arquivos aparecem na pasta `recebidos/` (botão **Abrir pasta recebidos** na tela do PC).
+
+**Do PC para o celular:** arraste arquivos para **Enviar para o celular** na tela do PC. No
+celular, eles aparecem em **Do computador**; toque em **Baixar** e o arquivo vai para a pasta
+Downloads.
+
+**Para fechar:** feche a aba do LocalDrop no PC (ele encerra sozinho em alguns segundos) ou use o
+botão **Encerrar LocalDrop**.
 
 Nada passa pela internet: o celular fala direto com o PC dentro da sua rede.
 
@@ -45,7 +52,8 @@ npm install
 npm run atalho
 ```
 
-O `npm run atalho` cria o atalho **LocalDrop** na Área de Trabalho. A partir daí, não é preciso
+O `npm run atalho` cria o atalho **LocalDrop** na Área de Trabalho (rode de novo depois de
+atualizar o projeto, para pegar ajustes do atalho). A partir daí, não é preciso
 abrir o terminal: o atalho instala dependências e compila sozinho quando o código muda.
 
 Na primeira vez, o Firewall do Windows pergunta se o Node.js pode acessar a rede.
@@ -53,9 +61,18 @@ Marque **apenas "Redes privadas"**. Não é preciso, nem recomendado, desativar 
 
 ## Uso
 
-- **Abrir:** dois cliques no atalho. Uma janela de terminal mostra o endereço e o PIN, e o navegador
-  abre a tela do PC. Se o LocalDrop já estiver aberto, o atalho só abre o navegador.
-- **Fechar:** feche a janela do terminal (ou Ctrl+C nela).
+- **Abrir:** dois cliques no atalho. O navegador abre a tela do PC; uma janela de terminal fica
+  minimizada na barra de tarefas. Se o LocalDrop já estiver aberto, o atalho só abre o navegador.
+- **Fechar:** feche a aba do LocalDrop no navegador, ou clique em **Encerrar LocalDrop**. Ninguém
+  precisa mexer no terminal. Detalhes:
+  - ao fechar a aba, ele espera 15 segundos (para não fechar num simples F5) e encerra;
+  - com duas abas abertas, só encerra quando as duas fecharem;
+  - **nunca encerra no meio de um envio ou download**: espera terminar;
+  - se o navegador for fechado à força, encerra depois de 3 minutos sem sinal.
+- **Enviar do PC para o celular:** arraste arquivos para **Enviar para o celular** (ou use
+  **Escolher arquivos**). No celular, toque em **Baixar** em **Do computador**. A tela do PC mostra
+  quando o celular baixou. Os arquivos ficam disponíveis até você tirá-los da lista ou fechar o
+  LocalDrop; valem a mesma lista de tipos e os mesmos limites.
 - **No celular:** escaneie o QR Code. O PIN já vem junto; se pedir, digite o que está na tela do PC.
 - **Vários arquivos:** use **Fotos e vídeos** (abre a galeria) ou **Arquivos**. Para marcar vários,
   toque e segure no primeiro. Dá para escolher em várias rodadas.
@@ -93,6 +110,7 @@ sobre o arquivo. O `localdrop.json` não vai para o Git.
 | Funciona em casa, mas não em outro lugar | Redes de hotel, faculdade ou "convidados" costumam ter **isolamento de clientes**, que impede um aparelho de falar com o outro. Não há o que fazer pelo LocalDrop. |
 | Endereço com IP errado | O terminal lista os IPs ignorados e o motivo. VPNs e adaptadores virtuais (WSL, VirtualBox, Hyper-V) são descartados de propósito. Desligar a VPN costuma resolver. |
 | "A porta 8787 já está em uso por outro programa" | Feche o outro programa ou troque a `porta` no `localdrop.json`. |
+| O LocalDrop fechou sozinho | Ele encerra quando a tela do PC fica fechada. Abra de novo pelo atalho. |
 | "PIN incorreto" | O PIN muda a cada abertura. Escaneie o QR Code de novo. Após 5 erros, o celular fica bloqueado por 5 minutos. |
 | O envio parou no meio | O celular pode ter bloqueado a tela ou perdido o Wi-Fi. Toque em **Tentar de novo**: só os que faltaram são reenviados. |
 | "Node.js não encontrado" ao abrir o atalho | Instale o Node.js LTS e abra o atalho de novo. |
@@ -108,6 +126,8 @@ O LocalDrop fica acessível para outros aparelhos da mesma rede, então foi feit
 - Nomes de arquivo sanitizados (sem path traversal) e nunca sobrescritos.
 - Arquivos recebidos marcados como "baixados da internet" pelo Windows.
 - Cabeçalhos de segurança (CSP, anti-iframe) e proteção contra CSRF.
+- Do PC para o celular: só os arquivos que você escolheu, numa pasta temporária apagada ao fechar;
+  a lista exige o PIN e cada link tem um código único e impossível de adivinhar.
 
 **Limitação importante:** a conexão é **HTTP, sem criptografia**. Na mesma rede, alguém com as
 ferramentas certas poderia ver o tráfego, inclusive os arquivos e o PIN. Use em redes em que

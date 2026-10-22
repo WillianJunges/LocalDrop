@@ -11,6 +11,8 @@ $atalho = $shell.CreateShortcut($caminhoAtalho)
 $atalho.TargetPath = Join-Path $raiz 'scripts\LocalDrop.bat'
 $atalho.WorkingDirectory = $raiz
 $atalho.IconLocation = (Join-Path $raiz 'scripts\localdrop.ico') + ',0'
+# 7 = minimizada: a janela do servidor fica na barra de tarefas, fora do caminho.
+$atalho.WindowStyle = 7
 $atalho.Description = 'Receber arquivos do celular pelo Wi-Fi'
 $atalho.Save()
 

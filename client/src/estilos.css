@@ -163,7 +163,7 @@ h2 {
   padding: 14px;
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--superficie);
   background: var(--destaque);
   border: none;
   border-radius: 8px;
@@ -247,6 +247,7 @@ h2 {
 }
 
 .botao-perigo {
+  color: #fff;
   background: var(--perigo);
 }
 
@@ -294,6 +295,7 @@ h2 {
 
 .lista {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin: 0;
   padding: 0;
@@ -348,10 +350,13 @@ h2 {
 }
 
 .item-nome {
+  display: -webkit-box;
   overflow: hidden;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .item-detalhe {
@@ -426,10 +431,6 @@ progress {
 
 /* Tela do PC: pasta recebidos */
 
-.cartao-pasta {
-  grid-column: 1 / -1;
-}
-
 .endereco-pasta {
   font-size: 1rem;
 }
@@ -437,4 +438,210 @@ progress {
 .botao-pasta {
   width: auto;
   padding: 12px 24px;
+}
+
+/* Fase 5: PC para o celular e encerrar */
+
+.cabecalho-pc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.botao-encerrar {
+  min-height: 44px;
+  color: var(--perigo);
+  border-color: var(--perigo);
+}
+
+.encerrar-confirmar {
+  max-width: 360px;
+  padding: 12px 16px;
+  background: var(--alerta-fundo);
+  border-left: 4px solid var(--alerta-borda);
+  border-radius: 6px;
+}
+
+.encerrar-confirmar p {
+  margin: 0 0 8px;
+}
+
+.encerrar-botoes {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.encerrar-botoes .botao {
+  width: auto;
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 1rem;
+}
+
+.area-soltar {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin-bottom: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  border: 2px dashed var(--borda);
+  border-radius: 10px;
+}
+
+.area-soltar p {
+  margin: 0;
+}
+
+.area-soltar.arrastando {
+  background: var(--fundo);
+  border-color: var(--destaque);
+}
+
+.item-baixado {
+  border-left-color: var(--ok-borda);
+}
+
+.do-computador {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--superficie);
+  border: 2px solid var(--ok-borda);
+  border-radius: 10px;
+}
+
+.do-computador h2 {
+  margin-top: 0;
+  color: var(--texto);
+}
+
+
+/* Celular: item "Do computador" com ações embaixo */
+
+.item-recebivel {
+  flex-wrap: wrap;
+}
+
+.item-acoes {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.item-confirmar p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.botao-acao {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px;
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.botao-acao-baixar {
+  color: var(--superficie);
+  background: var(--ok-borda);
+  border: 2px solid var(--ok-borda);
+}
+
+.botao-acao-neutro {
+  color: var(--texto);
+  background: transparent;
+  border: 2px solid var(--borda);
+}
+
+.botao-acao-perigo {
+  color: #fff;
+  background: var(--perigo);
+  border: 2px solid var(--perigo);
+}
+
+/* Tela do PC: colunas para caber sem rolar em telas largas */
+
+.pagina-pc {
+  max-width: 1440px;
+  padding-top: 16px;
+}
+
+.cabecalho-pc .subtitulo {
+  margin: 4px 0 0;
+}
+
+.conexao {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'qr'
+    'conectar'
+    'saida'
+    'pasta';
+  margin-top: 16px;
+}
+
+.conexao .cartao h2 {
+  margin-top: 14px;
+}
+
+.conexao .cartao h2:first-child {
+  margin-top: 0;
+}
+
+.qr {
+  grid-area: qr;
+}
+
+.cartao-conectar {
+  grid-area: conectar;
+}
+
+.cartao-pasta {
+  grid-area: pasta;
+}
+
+.cartao-saida {
+  display: flex;
+  flex-direction: column;
+  grid-area: saida;
+  min-height: 0;
+}
+
+/* Lista longa rola dentro do card, não a página inteira. */
+.cartao-saida .lista {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 760px) {
+  .conexao {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'qr conectar'
+      'qr pasta'
+      'saida saida';
+  }
+}
+
+@media (min-width: 1200px) {
+  .conexao {
+    grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1fr) minmax(0, 1.3fr);
+    grid-template-areas:
+      'qr conectar saida'
+      'qr pasta saida';
+  }
+
+  .cartao-saida .area-soltar {
+    flex: 1;
+    align-content: center;
+  }
 }

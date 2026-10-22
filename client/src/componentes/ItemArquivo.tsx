@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Item } from '../envio/fila';
 import { type Categoria, formatarBytes } from '../envio/regras';
 
-const ICONES: Record<Categoria, string> = {
+export const ICONES: Record<Categoria, string> = {
   imagem: '🖼️',
   documento: '📄',
   audio: '🎵',

@@ -4,6 +4,7 @@ import path from 'node:path';
 import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { criarApp } from './app.js';
+import { LIMITES_PADRAO } from './tipos.js';
 
 const pastaClient = mkdtempSync(path.join(tmpdir(), 'localdrop-client-'));
 writeFileSync(path.join(pastaClient, 'index.html'), '<!doctype html><title>LocalDrop</title>');
@@ -21,12 +22,15 @@ describe('GET /api/sessao', () => {
     const res = await request(app).get('/api/sessao').set('Host', 'localhost:8787');
 
     expect(res.status).toBe(200);
+    expect(res.body.chavePc).toMatch(/^[0-9a-f]{64}$/);
     expect(res.body).toEqual({
+      chavePc: res.body.chavePc,
       pin: '123456',
       enderecoCelular: 'http://192.168.0.42:8787',
       urlQrCode: 'http://192.168.0.42:8787/#pin=123456',
       interfaceNome: 'Wi-Fi',
       pasta: pastaClient,
+      limites: LIMITES_PADRAO,
     });
   });
 

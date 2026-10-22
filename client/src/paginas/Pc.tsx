@@ -1,5 +1,9 @@
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
+import type { Limites } from '../envio/regras';
+import { Encerrar } from '../pc/Encerrar';
+import { EnviarParaCelular } from '../pc/EnviarParaCelular';
+import { usePresenca } from '../pc/usePresenca';
 
 interface Sessao {
   pin: string;
@@ -7,6 +11,8 @@ interface Sessao {
   urlQrCode: string | null;
   interfaceNome: string | null;
   pasta: string;
+  chavePc: string;
+  limites: Limites;
 }
 
 type Estado =
@@ -24,12 +30,15 @@ async function carregarSessao(): Promise<{ sessao: Sessao; qrCode: string | null
     );
   }
   const sessao = (await resposta.json()) as Sessao;
-  const qrCode = sessao.urlQrCode ? await QRCode.toDataURL(sessao.urlQrCode, { width: 280, margin: 1 }) : null;
+  const qrCode = sessao.urlQrCode ? await QRCode.toDataURL(sessao.urlQrCode, { width: 240, margin: 1 }) : null;
   return { sessao, qrCode };
 }
 
 export function Pc() {
   const [estado, setEstado] = useState<Estado>({ tipo: 'carregando' });
+  const [encerrado, setEncerrado] = useState(false);
+  const chave = estado.tipo === 'pronto' ? estado.sessao.chavePc : null;
+  const { transferencias, conectado } = usePresenca(chave, !encerrado);
 
   useEffect(() => {
     carregarSessao()
@@ -42,10 +51,35 @@ export function Pc() {
       );
   }, []);
 
+  if (encerrado) {
+    return (
+      <main className="pagina pagina-pc">
+        <h1>LocalDrop</h1>
+        <p className="aviso aviso-ok" role="status">
+          <strong>LocalDrop encerrado.</strong> Pode fechar esta aba. Para abrir de novo, use o atalho LocalDrop na
+          Área de Trabalho.
+        </p>
+      </main>
+    );
+  }
+
   return (
     <main className="pagina pagina-pc">
-      <h1>LocalDrop</h1>
-      <p className="subtitulo">Envie arquivos do celular para este computador pelo Wi-Fi.</p>
+      <header className="cabecalho-pc">
+        <div>
+          <h1>LocalDrop</h1>
+          <p className="subtitulo">Troque arquivos entre o celular e este computador pelo Wi-Fi.</p>
+        </div>
+        {estado.tipo === 'pronto' && conectado && (
+          <Encerrar transferencias={transferencias} aoEncerrar={() => setEncerrado(true)} />
+        )}
+      </header>
+
+      {!conectado && (
+        <p className="aviso aviso-erro" role="alert">
+          <strong>O LocalDrop não está mais aberto.</strong> Para usar de novo, abra pelo atalho na Área de Trabalho.
+        </p>
+      )}
 
       {estado.tipo === 'carregando' && <p role="status">Carregando…</p>}
 
@@ -74,11 +108,9 @@ function Conexao({ sessao, qrCode }: { sessao: Sessao; qrCode: string | null }) 
     <div className="conexao">
       <section className="cartao qr" aria-labelledby="titulo-qr">
         <h2 id="titulo-qr">Escaneie com o celular</h2>
-        <img src={qrCode} width={280} height={280} alt={`QR Code para abrir ${sessao.enderecoCelular}`} />
-      </section>
+        <img src={qrCode} width={240} height={240} alt={`QR Code para abrir ${sessao.enderecoCelular}`} />
 
-      <section className="cartao" aria-labelledby="titulo-dados">
-        <h2 id="titulo-dados">Ou digite no navegador do celular</h2>
+        <h2>Ou digite no navegador do celular</h2>
         <p className="endereco">{sessao.enderecoCelular}</p>
 
         <h2>PIN</h2>
@@ -86,8 +118,10 @@ function Conexao({ sessao, qrCode }: { sessao: Sessao; qrCode: string | null }) 
           {sessao.pin}
         </p>
         <p className="dica">O QR Code já inclui o PIN. Ele muda sempre que o LocalDrop reinicia.</p>
+      </section>
 
-        <h2>Como conectar</h2>
+      <section className="cartao cartao-conectar" aria-labelledby="titulo-conectar">
+        <h2 id="titulo-conectar">Como conectar</h2>
         <ol className="passos">
           <li>Conecte o celular no mesmo Wi-Fi deste computador.</li>
           <li>Abra a câmera e aponte para o QR Code.</li>
@@ -97,6 +131,7 @@ function Conexao({ sessao, qrCode }: { sessao: Sessao; qrCode: string | null }) 
       </section>
 
       <PastaRecebidos pasta={sessao.pasta} />
+      <EnviarParaCelular limites={sessao.limites} />
     </div>
   );
 }

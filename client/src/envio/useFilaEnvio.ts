@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { conferirPin, enviarArquivo } from './api';
+import { conferirPin, destinoUpload, enviarArquivo } from './api';
 import { type Acao, FILA_VAZIA, itensParaEnviar, reduzirFila } from './fila';
 import { MedidorVelocidade, tempoRestante } from './medidor';
 import type { Limites } from './regras';
@@ -73,7 +73,7 @@ export function useFilaEnvio(pin: string, limites: Limites) {
       if (parar.current) break;
       despachar({ tipo: 'iniciar', id: item.id });
 
-      const envio = enviarArquivo(item.arquivo, pin, (bytes) => {
+      const envio = enviarArquivo(item.arquivo, destinoUpload(pin), (bytes) => {
         despachar({ tipo: 'progresso', id: item.id, bytesEnviados: bytes });
         const enviadosNoLote = bytesConcluidos + bytes;
         medidor.current.registrar(performance.now(), enviadosNoLote);

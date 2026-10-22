@@ -6,6 +6,7 @@ import { pipeline } from 'node:stream/promises';
 import busboy from 'busboy';
 import type { Request, RequestHandler, Response } from 'express';
 import { caminhoTemporario, espacoLivre, marcarComoDaInternet, mover } from './armazenamento.js';
+import type { Atividade } from './atividade.js';
 import { reservarNomeLivre, sanitizarNome } from './nomes.js';
 import { ehOffice, motivoOfficeInvalido } from './office.js';
 import { type Categoria, categoriaDe, extensaoDe, LIMITES_PADRAO } from './tipos.js';
@@ -20,11 +21,19 @@ export interface OpcoesUpload {
   inatividadeMs?: number;
   /** Espaço que sempre deve sobrar no disco, além do arquivo. */
   reservaDiscoBytes?: number;
+  /** Marca "baixado da internet" (padrão: sim). Desligado na cópia temporária do PC para o celular. */
+  marcarDaInternet?: boolean;
+  /** Conta o envio como transferência em andamento (o LocalDrop não fecha durante). */
+  atividade?: Atividade;
+  /** Chamado com o arquivo salvo; o que devolver entra na resposta. */
+  aoSalvar?: (salvo: ArquivoSalvo) => Record<string, unknown>;
 }
 
 export interface ArquivoSalvo {
   nome: string;
   tamanho: number;
+  /** Caminho no disco. Nunca vai na resposta para o cliente. */
+  caminho: string;
 }
 
 // Cabeçalhos do multipart (boundary, nome do campo etc.) somam bem menos que isso.
@@ -54,6 +63,7 @@ export function criarRotaUpload(opcoes: OpcoesUpload): RequestHandler {
     }
 
     ativos++;
+    const fimAtividade = opcoes.atividade?.iniciar();
     try {
       if (Number.isFinite(tamanhoDeclarado) && (await espacoLivre(opcoes.pasta)) < tamanhoDeclarado + reservaDisco) {
         throw new ErroUpload(507, 'Espaço insuficiente no disco do computador.');
@@ -61,8 +71,9 @@ export function criarRotaUpload(opcoes: OpcoesUpload): RequestHandler {
       // Sem limite de duração total (um vídeo grande demora), mas derruba conexão parada.
       req.setTimeout(inatividadeMs, () => req.destroy(new Error('Envio parado por inatividade.')));
 
-      const salvo = await receberArquivo(req, opcoes.pasta, limites, maiorLimite);
-      res.status(201).json({ ok: true, ...salvo });
+      const salvo = await receberArquivo(req, opcoes.pasta, limites, maiorLimite, opcoes.marcarDaInternet ?? true);
+      const extra = opcoes.aoSalvar?.(salvo) ?? {};
+      res.status(201).json({ ok: true, nome: salvo.nome, tamanho: salvo.tamanho, ...extra });
     } catch (erro) {
       if (erro instanceof ErroUpload) {
         responderErro(res, erro.status, erro.message);
@@ -72,6 +83,7 @@ export function criarRotaUpload(opcoes: OpcoesUpload): RequestHandler {
       }
     } finally {
       ativos--;
+      fimAtividade?.();
     }
   };
 }
@@ -90,6 +102,7 @@ function receberArquivo(
   pasta: string,
   limites: Readonly<Record<Categoria, number>>,
   maiorLimite: number,
+  marcarDaInternet: boolean,
 ): Promise<ArquivoSalvo> {
   return new Promise((resolve, reject) => {
     let leitor: busboy.Busboy;
@@ -108,7 +121,7 @@ function receberArquivo(
 
     leitor.once('file', (_campo, arquivo, info) => {
       arquivoAtual = arquivo;
-      salvarArquivo(arquivo, info.filename ?? '', pasta, limites).then(resolve, reject);
+      salvarArquivo(arquivo, info.filename ?? '', pasta, limites, marcarDaInternet).then(resolve, reject);
     });
     leitor.on('error', () => {
       const erro = new ErroUpload(400, 'Envio inválido ou interrompido.');
@@ -133,6 +146,7 @@ async function salvarArquivo(
   nomeOriginal: string,
   pasta: string,
   limites: Readonly<Record<Categoria, number>>,
+  marcarDaInternet: boolean,
 ): Promise<ArquivoSalvo> {
   const nome = sanitizarNome(nomeOriginal);
   const extensao = extensaoDe(nome);
@@ -157,9 +171,9 @@ async function salvarArquivo(
     await mover(temporario, reservado);
     const final = reservado;
     reservado = null;
-    await marcarComoDaInternet(final);
+    if (marcarDaInternet) await marcarComoDaInternet(final);
 
-    return { nome: path.basename(final), tamanho: fiscal.totalBytes() };
+    return { nome: path.basename(final), tamanho: fiscal.totalBytes(), caminho: final };
   } catch (erro) {
     await rm(temporario, { force: true });
     if (reservado) await rm(reservado, { force: true });

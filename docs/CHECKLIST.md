@@ -55,3 +55,28 @@ as regras; esta lista cobre o que só dá para ver com o PC e o celular de verda
 - [ ] `localdrop.json` com `"porta": 9000`: o atalho abre na porta 9000
 - [ ] `localdrop.json` com uma opção de nome errado: o LocalDrop não abre e explica o erro
 - [ ] `limitesMB.imagem` baixo: o celular avisa "Maior que o limite" já na seleção
+
+## PC para o celular (Fase 5)
+
+- [ ] Arrastar um arquivo para **Enviar para o celular**: aparece "Preparando…" e depois "Disponível no celular"
+- [ ] **Escolher arquivos** funciona igual
+- [ ] Um tipo fora da lista (ex.: `.exe`) aparece como "Não pode ser enviado"
+- [ ] No celular, **Do computador** mostra o arquivo em poucos segundos, sem recarregar
+- [ ] **Baixar** no celular: o arquivo vai para Downloads e abre normalmente
+- [ ] A tela do PC passa a mostrar "✓ Baixado pelo celular"
+- [ ] Tirar da lista (✕) no PC: some do celular em poucos segundos
+- [ ] Nome com acento (ex.: `férias.jpg`) chega com o nome certo no celular
+- [ ] Nome bem comprido: quebra em até 2 linhas no celular, sem sair da tela
+- [ ] **Cancelar** no celular pergunta antes; "Sim, cancelar" tira do celular e da tela do PC
+- [ ] Tela do PC em monitor largo: tudo visível sem rolar
+
+## Fechar sem terminal (Fase 5)
+
+- [ ] Depois de `npm run atalho`, o atalho abre com a janela do terminal minimizada
+- [ ] Fechar a aba do PC: o LocalDrop encerra em ~20 s (a janela minimizada some)
+- [ ] F5 na tela do PC: o LocalDrop **não** encerra
+- [ ] Duas abas abertas (dois cliques no atalho): fechar uma não encerra; fechar as duas encerra
+- [ ] Fechar a aba durante um envio do celular: o envio termina e só depois o LocalDrop encerra
+- [ ] **Encerrar LocalDrop** sem nada em andamento: encerra na hora e a página avisa
+- [ ] **Encerrar LocalDrop** durante um envio: pede confirmação na própria página
+- [ ] Depois de encerrado, o celular mostra "Sem conexão com o computador"
