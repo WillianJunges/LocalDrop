@@ -358,3 +358,34 @@ preparação da pasta temporária de saída) só acontece depois que a porta é 
 - **Tela do PC em colunas:** largura máxima de 1440 px e grid por áreas. Em telas largas
   (≥ 1200 px): QR e PIN | instruções e pasta | enviar para o celular. Entre 760 e 1200 px: duas
   colunas, com o envio embaixo. Abaixo disso: uma coluna. A lista do envio rola dentro do card.
+
+## Correção: cancelamento que voltava ao atualizar a página (v1.0.1)
+
+**Sintoma:** no celular, depois de cancelar um arquivo vindo do PC, ele reaparecia ao atualizar
+a página.
+
+**Causa (duas partes):**
+1. O LocalDrop aberto no PC tinha sido iniciado **antes** do build com a rota de cancelar. O
+   atalho viu que "já estava aberto" e só abriu o navegador. Resultado: página nova falando com
+   servidor antigo.
+2. A página tratava qualquer 404 como "o arquivo já tinha sido removido" e escondia o item só na
+   tela. Mas o servidor antigo respondia 404 porque **a rota não existia**, e o arquivo continuava
+   lá.
+
+**Correções:**
+- **O celular confirma com o servidor:** depois de cancelar, busca a lista de novo e só tira o
+  item da tela se ele realmente saiu. Se não saiu, mostra um erro com a orientação de reabrir o
+  LocalDrop.
+- **O atalho substitui uma versão antiga** (`versao.ts`, `instancia.ts`): cada build tem uma
+  versão (hash dos arquivos compilados), informada em `/api/sessao`. Ao encontrar um LocalDrop
+  aberto:
+  - mesma versão: só abre o navegador (como antes);
+  - versão diferente e nada sendo transferido: pede para o antigo encerrar (`/api/encerrar`),
+    espera a porta liberar e sobe o novo;
+  - versão diferente com transferência em andamento: **não interrompe**; avisa e abre o
+    navegador no antigo;
+  - versão antiga que nem tem `/api/encerrar`: pede para fechar a janela dela e abrir de novo.
+
+**Testado:** os três casos com instâncias reais na porta 8788 (mesmo build, build diferente e
+build diferente com envio lento em andamento), além do cancelamento seguido de nova consulta à
+lista, que veio vazia.

@@ -76,6 +76,8 @@ as regras; esta lista cobre o que só dá para ver com o PC e o celular de verda
 - [ ] Fechar a aba do PC: o LocalDrop encerra em ~20 s (a janela minimizada some)
 - [ ] F5 na tela do PC: o LocalDrop **não** encerra
 - [ ] Duas abas abertas (dois cliques no atalho): fechar uma não encerra; fechar as duas encerra
+- [ ] Com um LocalDrop antigo aberto, atualizar o código e clicar no atalho: o antigo fecha e o novo abre
+- [ ] Cancelar no celular e atualizar a página: o arquivo **não** volta
 - [ ] Fechar a aba durante um envio do celular: o envio termina e só depois o LocalDrop encerra
 - [ ] **Encerrar LocalDrop** sem nada em andamento: encerra na hora e a página avisa
 - [ ] **Encerrar LocalDrop** durante um envio: pede confirmação na própria página

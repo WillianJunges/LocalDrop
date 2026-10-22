@@ -1,5 +1,4 @@
 import { mkdirSync } from 'node:fs';
-import http from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -7,37 +6,16 @@ import { criarApp } from './app.js';
 import { limparTemporarios } from './armazenamento.js';
 import { Atividade } from './atividade.js';
 import { carregarConfig } from './config.js';
+import { consultarInstancia, esperarPortaLivre, pedirEncerramento } from './instancia.js';
 import { INTERVALO_VERIFICACAO_MS, MonitorPresenca } from './presenca.js';
 import { escolherIpLocal } from './rede.js';
 import { CaixaDeSaida } from './saida.js';
 import { gerarPin } from './sessao.js';
 import { abrirNavegador } from './sistema.js';
+import { calcularVersao } from './versao.js';
 
 // Passado pelo atalho da Área de Trabalho (scripts/iniciar.mjs).
 const ABRIR_NAVEGADOR = process.argv.includes('--abrir-navegador');
-
-/**
- * Confere se quem está na porta é um LocalDrop (aberto antes por outro clique no atalho).
- * Usa node:http e não fetch: no Windows, process.exit() logo após um fetch derruba o Node
- * com "Assertion failed ... async.c" (bug do Node).
- */
-function localDropJaRodando(porta: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const requisicao = http.get(`http://localhost:${porta}/api/sessao`, { timeout: 2000, agent: false }, (resposta) => {
-      let corpo = '';
-      resposta.on('data', (parte: Buffer) => (corpo += parte.toString()));
-      resposta.on('end', () => {
-        try {
-          resolve(resposta.statusCode === 200 && typeof (JSON.parse(corpo) as { pin?: unknown }).pin === 'string');
-        } catch {
-          resolve(false); // respondeu algo que não é JSON: é outro programa
-        }
-      });
-    });
-    requisicao.on('timeout', () => requisicao.destroy());
-    requisicao.on('error', () => resolve(false));
-  });
-}
 
 async function iniciar(): Promise<void> {
   const config = carregarConfig();
@@ -46,6 +24,7 @@ async function iniciar(): Promise<void> {
   const urlPc = `http://localhost:${config.porta}/pc`;
   const rede = escolherIpLocal();
   const pin = gerarPin();
+  const versao = calcularVersao();
   const atividade = new Atividade();
   const saida = new CaixaDeSaida(path.join(tmpdir(), `localdrop-saida-${config.porta}`));
 
@@ -73,6 +52,7 @@ async function iniciar(): Promise<void> {
       presenca,
       aoEncerrar: () => encerrar('botão "Encerrar LocalDrop"'),
     },
+    versao,
   });
 
   // Sem host: escuta em todas as interfaces (IPv4 e IPv6), inclusive o Wi-Fi.
@@ -109,12 +89,34 @@ async function iniciar(): Promise<void> {
     if (ABRIR_NAVEGADOR) abrirNavegador(urlPc);
   });
 
+  let substituindo = false;
   servidor.on('error', async (erro: NodeJS.ErrnoException) => {
-    if (erro.code === 'EADDRINUSE') {
-      if (await localDropJaRodando(config.porta)) {
+    if (erro.code === 'EADDRINUSE' && !substituindo) {
+      const aberto = await consultarInstancia(config.porta);
+      if (aberto && aberto.versao === versao) {
         console.log(`\n  O LocalDrop já está aberto em ${urlPc}`);
         if (ABRIR_NAVEGADOR) abrirNavegador(urlPc);
         process.exit(0);
+      }
+      if (aberto && aberto.transferencias > 0) {
+        // Fechar agora interromperia um envio ou download: deixa o antigo terminar.
+        console.log('\n  Uma versão antiga do LocalDrop está aberta, com uma transferência em andamento.');
+        console.log('  Ela continua aberta. Quando terminar, feche o LocalDrop e abra o atalho de novo.\n');
+        if (ABRIR_NAVEGADOR) abrirNavegador(urlPc);
+        process.exit(0);
+      }
+      if (aberto) {
+        // Página nova falando com servidor antigo causa erros estranhos: troca pelo novo.
+        console.log('\n  Há uma versão antiga do LocalDrop aberta. Fechando para abrir a nova...');
+        substituindo = true;
+        if ((await pedirEncerramento(config.porta)) && (await esperarPortaLivre(config.porta, 10_000))) {
+          servidor.listen(config.porta);
+          return;
+        }
+        console.error(
+          '\n  Não consegui fechar a versão antiga. Feche a janela dela (na barra de tarefas) e abra o atalho de novo.\n',
+        );
+        process.exit(1);
       }
       console.error(
         `\n  A porta ${config.porta} já está em uso por outro programa. Feche-o ou troque a porta no localdrop.json.\n`,

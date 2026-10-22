@@ -11,6 +11,12 @@ interface Disponivel {
 
 const ATUALIZAR_MS = 3000;
 
+async function buscarDisponiveis(pin: string): Promise<Disponivel[]> {
+  const resposta = await fetch('/api/disponiveis', { headers: { 'X-LocalDrop-Pin': pin } });
+  if (!resposta.ok) throw new Error(String(resposta.status));
+  return ((await resposta.json()) as { arquivos: Disponivel[] }).arquivos;
+}
+
 /** Lista do que o PC deixou para baixar, atualizada sozinha enquanto a página está visível. */
 function useDisponiveis(pin: string, ativo: boolean) {
   const [arquivos, setArquivos] = useState<Disponivel[]>([]);
@@ -23,11 +29,9 @@ function useDisponiveis(pin: string, ativo: boolean) {
     const atualizar = async () => {
       if (document.visibilityState !== 'visible') return; // poupa bateria com a tela apagada
       try {
-        const resposta = await fetch('/api/disponiveis', { headers: { 'X-LocalDrop-Pin': pin } });
-        if (!resposta.ok) throw new Error(String(resposta.status));
-        const corpo = (await resposta.json()) as { arquivos: Disponivel[] };
+        const lista = await buscarDisponiveis(pin);
         if (!cancelado) {
-          setArquivos(corpo.arquivos);
+          setArquivos(lista);
           setSemConexao(false);
         }
       } catch {
@@ -45,12 +49,11 @@ function useDisponiveis(pin: string, ativo: boolean) {
     };
   }, [pin, ativo]);
 
-  const removerDaLista = (id: string) => setArquivos((atuais) => atuais.filter((a) => a.id !== id));
-  return { arquivos, semConexao, removerDaLista };
+  return { arquivos, semConexao, setArquivos };
 }
 
 export function DoComputador({ pin, ativo }: { pin: string; ativo: boolean }) {
-  const { arquivos, semConexao, removerDaLista } = useDisponiveis(pin, ativo);
+  const { arquivos, semConexao, setArquivos } = useDisponiveis(pin, ativo);
   const [baixados, setBaixados] = useState<Set<string>>(new Set());
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -58,13 +61,18 @@ export function DoComputador({ pin, ativo }: { pin: string; ativo: boolean }) {
   async function cancelarRecebimento(id: string) {
     setErro(null);
     try {
-      const resposta = await fetch(`/api/disponiveis/${encodeURIComponent(id)}`, {
+      await fetch(`/api/disponiveis/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: { 'X-LocalDrop-Pin': pin },
       });
-      // 404: o PC já tinha tirado da lista; o resultado é o mesmo.
-      if (!resposta.ok && resposta.status !== 404) throw new Error(String(resposta.status));
-      removerDaLista(id);
+      // O servidor é quem decide: só some da tela se tiver saído da lista dele. Não dá para
+      // confiar só no status (um LocalDrop antigo, sem esta rota, também responde 404).
+      const lista = await buscarDisponiveis(pin);
+      setArquivos(lista);
+      if (lista.some((arquivo) => arquivo.id === id)) {
+        setErro('O computador não conseguiu cancelar. Feche o LocalDrop no PC e abra pelo atalho de novo.');
+        return;
+      }
       setConfirmando(null);
     } catch {
       setErro('Não foi possível cancelar. Confira a conexão com o computador.');

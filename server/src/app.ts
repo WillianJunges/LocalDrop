@@ -43,6 +43,8 @@ export interface OpcoesApp {
   /** Transferências em andamento (o LocalDrop não fecha durante). */
   atividade?: Atividade;
   pc?: OpcoesTelaPc;
+  /** Identifica o build (versao.ts); o atalho compara para substituir uma versão antiga aberta. */
+  versao?: string;
 }
 
 export function criarApp(opcoes: OpcoesApp) {
@@ -73,6 +75,8 @@ export function criarApp(opcoes: OpcoesApp) {
       pasta: pastaRecebidos,
       chavePc: pc.chave,
       limites,
+      versao: opcoes.versao ?? 'dev',
+      transferencias: atividade.emAndamento,
     });
   });
 
