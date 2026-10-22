@@ -6,6 +6,7 @@ interface Sessao {
   enderecoCelular: string | null;
   urlQrCode: string | null;
   interfaceNome: string | null;
+  pasta: string;
 }
 
 type Estado =
@@ -94,6 +95,38 @@ function Conexao({ sessao, qrCode }: { sessao: Sessao; qrCode: string | null }) 
         </ol>
         {sessao.interfaceNome && <p className="dica">Rede usada: {sessao.interfaceNome}</p>}
       </section>
+
+      <PastaRecebidos pasta={sessao.pasta} />
     </div>
+  );
+}
+
+function PastaRecebidos({ pasta }: { pasta: string }) {
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function abrir() {
+    setErro(null);
+    try {
+      // O header X-LocalDrop mostra ao servidor que o pedido veio desta página (proteção contra CSRF).
+      const resposta = await fetch('/api/abrir-pasta', { method: 'POST', headers: { 'X-LocalDrop': '1' } });
+      if (!resposta.ok) setErro('Não foi possível abrir a pasta.');
+    } catch {
+      setErro('O LocalDrop não está respondendo. Ele ainda está aberto?');
+    }
+  }
+
+  return (
+    <section className="cartao cartao-pasta" aria-labelledby="titulo-pasta">
+      <h2 id="titulo-pasta">Arquivos recebidos</h2>
+      <p className="endereco endereco-pasta">{pasta}</p>
+      <button type="button" className="botao botao-pasta" onClick={abrir}>
+        Abrir pasta recebidos
+      </button>
+      {erro && (
+        <p className="aviso aviso-erro" role="alert">
+          {erro}
+        </p>
+      )}
+    </section>
   );
 }

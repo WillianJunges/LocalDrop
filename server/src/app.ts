@@ -1,9 +1,12 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import express, { type ErrorRequestHandler, type Request, type Response } from 'express';
+import { cabecalhosSeguranca, exigirPaginaDoLocalDrop } from './cabecalhos.js';
 import { somenteNoPc } from './loopback.js';
 import { exigirPin } from './pin.js';
+import { abrirPasta as abrirPastaNoWindows } from './sistema.js';
 import { ControleTentativas } from './tentativas.js';
+import { LIMITES_PADRAO } from './tipos.js';
 import { criarRotaUpload, type OpcoesUpload } from './upload.js';
 
 export interface InfoSessao {
@@ -17,13 +20,18 @@ export interface OpcoesApp {
   sessao: InfoSessao;
   pastaClient: string;
   pastaRecebidos: string;
-  /** Permite aos testes trocar limites, tempo de inatividade etc. */
+  /** Limites por categoria e, nos testes, tempo de inatividade etc. */
   upload?: Omit<OpcoesUpload, 'pasta'>;
+  /** Trocado nos testes para não abrir o Explorer de verdade. */
+  abrirPasta?: (pasta: string) => boolean;
 }
 
-export function criarApp({ sessao, pastaClient, pastaRecebidos, upload }: OpcoesApp) {
+export function criarApp({ sessao, pastaClient, pastaRecebidos, upload, abrirPasta = abrirPastaNoWindows }: OpcoesApp) {
   const app = express();
   app.disable('x-powered-by');
+  app.use(cabecalhosSeguranca);
+
+  const limites = upload?.limites ?? LIMITES_PADRAO;
 
   app.get('/api/sessao', somenteNoPc, (_req, res) => {
     const enderecoCelular = sessao.ip ? `http://${sessao.ip}:${sessao.porta}` : null;
@@ -33,15 +41,25 @@ export function criarApp({ sessao, pastaClient, pastaRecebidos, upload }: Opcoes
       // O PIN vai no fragmento (#): o navegador não envia essa parte ao servidor.
       urlQrCode: enderecoCelular ? `${enderecoCelular}/#pin=${sessao.pin}` : null,
       interfaceNome: sessao.interfaceNome,
+      pasta: pastaRecebidos,
     });
+  });
+
+  app.post('/api/abrir-pasta', somenteNoPc, exigirPaginaDoLocalDrop, (_req, res) => {
+    if (abrirPasta(pastaRecebidos)) {
+      res.json({ ok: true });
+    } else {
+      res.status(501).json({ erro: 'Abrir a pasta só funciona no Windows.' });
+    }
   });
 
   // A mesma contagem de PINs errados vale para as duas rotas.
   const pinObrigatorio = exigirPin(sessao.pin, new ControleTentativas());
 
-  // Checagem rápida, sem arquivo: o celular confirma o PIN antes de começar um envio grande.
+  // Checagem rápida, sem arquivo: o celular confirma o PIN antes de começar um envio grande
+  // e recebe os limites configurados, para avisar já na seleção.
   app.post('/api/pin', pinObrigatorio, (_req, res) => {
-    res.json({ ok: true });
+    res.json({ ok: true, limites });
   });
   app.post('/api/upload', pinObrigatorio, criarRotaUpload({ ...upload, pasta: pastaRecebidos }));
 

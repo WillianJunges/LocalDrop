@@ -26,6 +26,7 @@ describe('GET /api/sessao', () => {
       enderecoCelular: 'http://192.168.0.42:8787',
       urlQrCode: 'http://192.168.0.42:8787/#pin=123456',
       interfaceNome: 'Wi-Fi',
+      pasta: pastaClient,
     });
   });
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { conferirPin, enviarArquivo } from './api';
 import { type Acao, FILA_VAZIA, itensParaEnviar, reduzirFila } from './fila';
 import { MedidorVelocidade, tempoRestante } from './medidor';
+import type { Limites } from './regras';
 
 export interface Lote {
   totalArquivos: number;
@@ -20,7 +21,7 @@ export interface Aviso {
   doPin?: boolean;
 }
 
-export function useFilaEnvio(pin: string) {
+export function useFilaEnvio(pin: string, limites: Limites) {
   const [estado, despacharBruto] = useReducer(reduzirFila, FILA_VAZIA);
   const [lote, setLote] = useState<Lote | null>(null);
   const [aviso, setAviso] = useState<Aviso | null>(null);
@@ -173,7 +174,7 @@ export function useFilaEnvio(pin: string) {
     lote,
     aviso,
     telaTravadaLigada,
-    adicionar: (arquivos: File[]) => despachar({ tipo: 'adicionar', arquivos }),
+    adicionar: (arquivos: File[]) => despachar({ tipo: 'adicionar', arquivos, limites }),
     remover: (id: number) => despachar({ tipo: 'remover', id }),
     removerRecusados: () => despachar({ tipo: 'removerRecusados' }),
     limparEnviados: () => despachar({ tipo: 'limparEnviados' }),

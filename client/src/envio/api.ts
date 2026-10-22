@@ -1,3 +1,5 @@
+import type { Limites } from './regras';
+
 export type TipoFalha = 'pin' | 'bloqueado' | 'recusado' | 'rede' | 'cancelado' | 'servidor';
 
 export type ResultadoEnvio = { ok: true; nome: string } | { ok: false; tipo: TipoFalha; motivo: string };
@@ -23,11 +25,13 @@ function tipoPorStatus(status: number): TipoFalha {
 
 const MENSAGEM_REDE = 'A conexão com o computador caiu. Confira se o celular continua no mesmo Wi-Fi.';
 
-/** Confere o PIN sem enviar arquivo (POST /api/pin). */
-export async function conferirPin(pin: string): Promise<ResultadoEnvio> {
+export type ResultadoPin = { ok: true; limites: Limites } | { ok: false; tipo: TipoFalha; motivo: string };
+
+/** Confere o PIN sem enviar arquivo (POST /api/pin) e recebe os limites configurados no PC. */
+export async function conferirPin(pin: string): Promise<ResultadoPin> {
   try {
     const resposta = await fetch('/api/pin', { method: 'POST', headers: { 'X-LocalDrop-Pin': pin } });
-    if (resposta.ok) return { ok: true, nome: '' };
+    if (resposta.ok) return { ok: true, limites: ((await resposta.json()) as { limites: Limites }).limites };
     const corpo = (await resposta.json().catch(() => ({}))) as RespostaServidor;
     return { ok: false, tipo: tipoPorStatus(resposta.status), motivo: corpo.motivo ?? 'PIN não confirmado.' };
   } catch {

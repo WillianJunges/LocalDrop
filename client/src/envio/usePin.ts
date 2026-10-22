@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { conferirPin } from './api';
+import { LIMITES_PADRAO, type Limites } from './regras';
 
 const CHAVE_PIN = 'localdrop:pin';
 
@@ -36,6 +37,7 @@ export function usePin() {
   const [pin, setPinBruto] = useState(lerPinInicial);
   const [estado, setEstado] = useState<EstadoPin>('incompleto');
   const [mensagem, setMensagem] = useState('');
+  const [limites, setLimites] = useState<Limites>(LIMITES_PADRAO);
 
   // Confere assim que os 6 dígitos estão preenchidos (vindo do QR Code ou digitados).
   useEffect(() => {
@@ -49,6 +51,7 @@ export function usePin() {
       if (ignorar) return;
       if (resultado.ok) {
         setEstado('confirmado');
+        setLimites(resultado.limites);
       } else {
         setEstado(resultado.tipo === 'pin' ? 'errado' : resultado.tipo === 'bloqueado' ? 'bloqueado' : 'sem-conexao');
         setMensagem(resultado.motivo);
@@ -65,5 +68,5 @@ export function usePin() {
     guardarPin(limpo);
   };
 
-  return { pin, setPin, estado, mensagem };
+  return { pin, setPin, estado, mensagem, limites };
 }

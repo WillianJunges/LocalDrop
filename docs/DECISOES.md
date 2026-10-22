@@ -188,3 +188,94 @@ HTTPS:
 
 A página também pede confirmação antes de fechar enquanto há um envio em andamento
 (`beforeunload`).
+
+## Fase 4
+
+### Abrir com um clique
+
+- `scripts/LocalDrop.bat` confere se o Node.js existe e chama `scripts/iniciar.mjs`.
+- `iniciar.mjs` roda `npm install` só se o `package-lock.json` for mais novo que a última
+  instalação, e `npm run build` só se algum arquivo de código for mais novo que o build. Depois
+  carrega o servidor **no mesmo processo**: fechar a janela ou Ctrl+C encerra tudo.
+- O servidor abre o navegador **depois** de estar pronto (`--abrir-navegador`), não antes.
+- Se a porta estiver ocupada, o servidor pergunta a ela se é um LocalDrop (`/api/sessao`). Se
+  for, só abre o navegador e sai sem erro. Isso cobre o duplo clique repetido no atalho.
+- O navegador e a pasta são abertos com `explorer.exe <alvo>`, sem shell no meio.
+- `npm run atalho` cria o `.lnk` na Área de Trabalho, com ícone próprio. O `.ico` é gerado por
+  `scripts/gerar-icone.mjs`, sem dependências, a partir do mesmo desenho do `icone.svg`.
+
+**Bug do Node encontrado:** no Windows, `process.exit()` logo depois de um `fetch` derruba o
+processo com `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c`.
+Reproduzido isoladamente; a checagem "já está rodando" usa `node:http` para evitar.
+
+### Configuração (`localdrop.json`)
+
+Opcional, com modelo em `localdrop.exemplo.json` e fora do Git (pode ter caminhos pessoais).
+Prioridade: variáveis de ambiente > arquivo > padrões. Validação estrita: opção desconhecida
+(erro de digitação), porta inválida ou limite fora de 1 MB a 50 GB **impedem a inicialização**,
+com mensagem clara. Melhor não abrir do que abrir com um valor inesperado.
+
+Os limites configurados vão para o celular na resposta de `POST /api/pin`, para que os avisos da
+seleção batam com o servidor.
+
+### Tela do PC
+
+Botão **Abrir pasta recebidos** (`POST /api/abrir-pasta`): só no próprio PC (`somenteNoPc`) e
+só com o header `X-LocalDrop: 1`. O header impede que um site malicioso aberto no navegador do PC
+dispare a ação (CSRF): ele não consegue mandar headers customizados sem CORS.
+
+### Cabeçalhos de segurança
+
+Em todas as respostas: `Content-Security-Policy` (só recursos do próprio LocalDrop; `data:` para
+o QR Code e `blob:` para as miniaturas), `X-Frame-Options: DENY`, `X-Content-Type-Options:
+nosniff`, `Referrer-Policy: no-referrer` e `Cross-Origin-Opener/Resource-Policy: same-origin`.
+Conferido no Chrome: nenhum recurso da página foi bloqueado.
+
+### Revisão final de segurança (seção 4 do CLAUDE.md)
+
+| Requisito | Situação | Onde |
+|---|---|---|
+| PIN aleatório de 6 dígitos por inicialização | ✓ | `sessao.ts` |
+| PIN no fragmento da URL | ✓ | `app.ts`, `usePin.ts` |
+| Pedir PIN se faltar | ✓ | `Celular.tsx` |
+| Comparação em tempo constante | ✓ | `sessao.ts` |
+| Bloqueio por tentativas | ✓ 5 erros = 5 min, somando `/api/pin` e `/api/upload` | `tentativas.ts`, `pin.ts` |
+| PIN e QR só no próprio PC | ✓ IP + header Host | `loopback.ts` |
+| Lista branca + conteúdo | ✓ | `tipos.ts`, `assinatura.ts`, `office.ts`, `validacao.ts` |
+| Ignorar Content-Type do cliente | ✓ | `upload.ts` |
+| Limites por categoria, configuráveis | ✓ | `config.ts` |
+| Streaming, `.part`, limpeza, timeouts, espaço em disco | ✓ | `upload.ts`, `armazenamento.ts` |
+| Nunca executar/abrir/extrair | ✓ | (nenhum código faz isso) |
+| Zone.Identifier | ✓ | `armazenamento.ts` |
+| Nomes sanitizados, sem path traversal | ✓ | `nomes.ts` |
+| Nunca sobrescrever | ✓ reserva atômica | `nomes.ts` |
+| Erros sem stack trace | ✓ | `app.ts` |
+| Sem listagem/download | ✓ | (não existe rota) |
+| Firewall documentado, sem desativar | ✓ | `README.md` |
+| Extra: CSP e outros cabeçalhos | ✓ | `cabecalhos.ts` |
+| Extra: CSRF nas ações da tela do PC | ✓ | `cabecalhos.ts` |
+
+**Limitações conhecidas (aceitas):**
+- **HTTP sem criptografia.** Alguém na mesma rede, com as ferramentas certas, pode ver o tráfego,
+  inclusive o PIN e os arquivos. HTTPS exigiria um certificado confiável pelo celular, o que é
+  complicado numa rede local. Documentado no README: use em redes de confiança.
+- O bloqueio de PIN é por IP. Na rede local isso basta: com 5 tentativas a cada 5 minutos,
+  adivinhar um PIN de 1 milhão de combinações levaria anos.
+- O controle de tentativas guarda um registro por IP na memória, sem limpeza. Numa rede doméstica
+  isso são poucas entradas; some ao fechar o LocalDrop.
+
+### Avaliação: gerar um `.exe` único (não implementado)
+
+Seria possível com o recurso **Single Executable Applications (SEA)** do Node: juntar o servidor
+num arquivo só (esbuild), embutir o front como asset e injetar tudo numa cópia do `node.exe`.
+
+| A favor | Contra |
+|---|---|
+| Roda sem Node.js instalado | Arquivo de ~90 MB (leva o Node inteiro) |
+| Um arquivo só para copiar | Sem assinatura digital, o Windows mostra "O Windows protegeu o computador" e antivírus podem desconfiar |
+| | Precisa gerar o `.exe` de novo a cada mudança, com mais um passo de build para manter |
+| | O SEA ainda é um recurso em evolução no Node |
+
+**Recomendação:** não fazer agora. O ganho principal (não precisar do Node.js) só importa para
+distribuir a outras pessoas, o que está fora do escopo. O atalho já resolve o uso pessoal.
+Fica como próximo passo se um dia o projeto for compartilhado.
