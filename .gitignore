@@ -25,3 +25,6 @@ Desktop.ini
 
 # Tutoriais Git pessoais (passo a passo de cada fase)
 tutoriais-git/
+
+# Configuração local (pode ter caminhos pessoais). Modelo: localdrop.exemplo.json
+localdrop.json

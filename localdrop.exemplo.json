@@ -1,0 +1,11 @@
+{
+  "porta": 8787,
+  "pasta": "recebidos",
+  "limitesMB": {
+    "imagem": 50,
+    "documento": 50,
+    "audio": 200,
+    "video": 4096,
+    "compactado": 2048
+  }
+}

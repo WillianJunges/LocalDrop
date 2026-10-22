@@ -5,8 +5,8 @@ Registro real de cada fase, para servir de base aos posts no LinkedIn.
 ## Fase 0: planejamento (20–21/10/2026)
 
 - **A dor:** passar fotos, documentos e vídeos do celular para o PC sem cabo, WhatsApp ou nuvem.
-- **Antes de codar, pesquisei alternativas:** LocalSend, PairDrop, Quick Share e Vincular ao
-  Celular já existem. Escolhi fazer o meu mesmo assim: para aprender e ter algo do meu jeito.
+- **Alternativas que eu já conhecia:** LocalSend, PairDrop, Quick Share e Vincular ao
+  Celular. Escolhi fazer o meu mesmo assim: para aprender e ter algo do meu jeito.
 - **O primeiro prompt** (feito com ChatGPT) era enorme: 10 fases, várias IAs e um tutorial Git de
   12 passos em cada etapa. Revisei com o Claude e enxuguei para 4 fases, uma IA só (Claude Code)
   e foco no que importa.
@@ -156,3 +156,53 @@ Registro real de cada fase, para servir de base aos posts no LinkedIn.
   da fase; vale um GIF).
 - Aviso "Pronto! N arquivos enviados" com a seção "Enviados nesta sessão" aberta.
 - Seletor de galeria do Android com várias fotos marcadas.
+
+## Fase 4: abrir com um clique e acabamento (22/10/2026)
+
+**O que foi construído**
+- Atalho **LocalDrop** na Área de Trabalho, com ícone próprio. Instala e compila sozinho quando
+  precisa, sobe o servidor e abre a tela do PC no navegador.
+- Clicar no atalho com o LocalDrop já aberto só abre o navegador, em vez de dar "porta ocupada".
+- `localdrop.json` opcional (porta, pasta, limites) com validação estrita e mensagens claras;
+  os limites chegam também ao celular.
+- Botão **Abrir pasta recebidos** na tela do PC.
+- Cabeçalhos de segurança (CSP e outros) e proteção contra CSRF nas ações da tela do PC.
+- Revisão final de segurança item por item, README completo e checklist de teste manual.
+- 169 testes (156 servidor + 13 front).
+
+**Dificuldades e descobertas**
+- **Achei um bug do próprio Node.js no Windows:** ao clicar no atalho com o LocalDrop já aberto,
+  o processo caía com `Assertion failed ... async.c`. Isolando em scripts de 3 linhas, a causa
+  apareceu: `process.exit()` logo depois de um `fetch`. Trocar por `node:http` resolveu.
+- **O terminal "traduziu" meu .bat:** ao gravar o arquivo pelo Git Bash, o `>nul` do Windows
+  virou `>/dev/null`, que o `cmd` não entende. Reescrito e conferido byte a byte (CRLF e `>nul`).
+- **Aviso de segurança do Node:** chamar `npm` com `shell: true` e lista de argumentos gera um
+  aviso de depreciação no Node 24. O comando passou a ser montado como texto fixo.
+- **O `package-lock.json` mudando sozinho:** o `npm install` desta máquina sempre remove uma linha
+  `"peer": true`. Já tinha bloqueado um `git switch`; agora entrou no commit.
+- **Ícone sem dependências:** o `.ico` do atalho é gerado por um script que desenha o mesmo ícone
+  do SVG, monta PNGs e empacota num ICO, usando só o Node.
+- **Decisão consciente de NÃO fazer o `.exe`:** seria ~90 MB, sem assinatura o Windows mostraria
+  alerta, e o ganho (não precisar do Node) só importa para distribuir.
+
+**Como o Claude ajudou**
+- Criou o inicializador, o atalho, a configuração validada, os cabeçalhos e o gerador de ícone.
+- Testou de ponta a ponta: o inicializador recompilou ao detectar código novo, o segundo clique
+  reconheceu a instância aberta (3 vezes seguidas, sem erro), o `.bat` funcionou pelo `cmd`, a
+  tela do PC abriu no Chrome sem bloqueios da CSP e o Explorer abriu na pasta certa.
+- Isolou o bug do Node em scripts mínimos antes de corrigir.
+- O que eu decidi: aprovar o plano da fase e se o `.exe` vale a pena (avaliação em DECISOES.md).
+
+**Números finais do projeto**
+- 4 fases, 4 PRs.
+- 169 testes automatizados (156 servidor + 13 front).
+- 15 tipos de arquivo aceitos, até 4 GB por vídeo, upload de 300 MB com menos de 100 MB de memória.
+- Front com 84 KB gzip.
+- 0 vulnerabilidades no `npm install`.
+
+**Prints para tirar**
+- Atalho com o ícone na Área de Trabalho.
+- Janela do terminal + navegador abrindo sozinhos depois do duplo clique (vale um GIF curto).
+- Tela do PC com o card "Arquivos recebidos" e o Explorer aberto ao lado.
+- GIF final de 15 s: duplo clique → QR Code → celular escolhendo fotos → barra de progresso →
+  arquivos na pasta.

@@ -1,90 +1,148 @@
 # LocalDrop
 
 Envie arquivos do celular Android para o PC Windows pelo Wi-Fi de casa.
-Sem nuvem, sem cabo, sem conta, sem instalar app no celular.
+Sem nuvem, sem cabo, sem conta e sem instalar app no celular.
 
-> Projeto pessoal em construção. Fase atual: **3 de 4** (interface do celular com progresso, velocidade e reenvio).
+<p align="center"><img src="client/src/assets/icone.svg" width="96" alt="Ícone do LocalDrop"></p>
 
 ## Como funciona
 
-1. Você inicia o LocalDrop no PC.
-2. A tela do PC mostra um QR Code e um PIN de 6 dígitos.
-3. Você escaneia o QR Code com o celular (no mesmo Wi-Fi) e a página abre no navegador.
-4. Você escolhe os arquivos e eles chegam na pasta `recebidos/`.
+1. Dois cliques no atalho **LocalDrop** da Área de Trabalho.
+2. O navegador do PC abre com um **QR Code** e um **PIN** de 6 dígitos.
+3. Você aponta a câmera do celular para o QR Code (os dois no mesmo Wi-Fi).
+4. Escolhe fotos, vídeos ou documentos e toca em **Enviar**.
+5. Acompanha o progresso, a velocidade e o tempo restante.
+6. Os arquivos aparecem na pasta `recebidos/` (botão **Abrir pasta recebidos** na tela do PC).
+
+Nada passa pela internet: o celular fala direto com o PC dentro da sua rede.
 
 ## Arquivos aceitos
 
-| Categoria | Extensões | Limite |
-|---|---|---|
-| Imagens | jpg, jpeg, png, webp, gif | 50 MB |
-| Documentos | pdf, docx, xlsx, pptx, txt, csv | 50 MB |
-| Áudio | mp3, m4a | 200 MB |
-| Vídeo | mp4 | 4 GB |
-| Compactados | zip | 2 GB |
+| Categoria   | Extensões                         | Limite padrão |
+|-------------|-----------------------------------|---------------|
+| Imagens     | jpg, jpeg, png, webp, gif         | 50 MB         |
+| Documentos  | pdf, docx, xlsx, pptx, txt, csv   | 50 MB         |
+| Áudio       | mp3, m4a                          | 200 MB        |
+| Vídeo       | mp4                               | 4 GB          |
+| Compactados | zip                               | 2 GB          |
 
-O conteúdo de cada arquivo é conferido, não só a extensão. Executáveis, scripts e documentos com macro são recusados.
+O **conteúdo** de cada arquivo é conferido, não só a extensão. Executáveis, scripts e documentos
+do Office com macro são recusados.
 
 ## Requisitos
 
 - Windows 10 ou 11
-- [Node.js](https://nodejs.org/) 22 ou mais recente (LTS)
+- [Node.js](https://nodejs.org/) 22 ou mais recente (versão LTS)
 - PC e celular no **mesmo Wi-Fi**, com a rede marcada como **Privada** no Windows
+- Celular Android com Chrome (ou outro navegador atual)
 
-## Instalação
+## Instalação (uma vez)
 
 ```bash
+git clone https://github.com/WillianJunges/LocalDrop.git
+cd LocalDrop
 npm install
-npm run build
+npm run atalho
 ```
+
+O `npm run atalho` cria o atalho **LocalDrop** na Área de Trabalho. A partir daí, não é preciso
+abrir o terminal: o atalho instala dependências e compila sozinho quando o código muda.
+
+Na primeira vez, o Firewall do Windows pergunta se o Node.js pode acessar a rede.
+Marque **apenas "Redes privadas"**. Não é preciso, nem recomendado, desativar o firewall.
 
 ## Uso
 
-```bash
-npm start
+- **Abrir:** dois cliques no atalho. Uma janela de terminal mostra o endereço e o PIN, e o navegador
+  abre a tela do PC. Se o LocalDrop já estiver aberto, o atalho só abre o navegador.
+- **Fechar:** feche a janela do terminal (ou Ctrl+C nela).
+- **No celular:** escaneie o QR Code. O PIN já vem junto; se pedir, digite o que está na tela do PC.
+- **Vários arquivos:** use **Fotos e vídeos** (abre a galeria) ou **Arquivos**. Para marcar vários,
+  toque e segure no primeiro. Dá para escolher em várias rodadas.
+- **Envios longos:** mantenha a tela do celular ligada e a página aberta.
+
+O PIN muda toda vez que o LocalDrop abre.
+
+## Configuração (opcional)
+
+Copie `localdrop.exemplo.json` para `localdrop.json` e altere o que quiser:
+
+```json
+{
+  "porta": 8787,
+  "pasta": "recebidos",
+  "limitesMB": { "video": 8192 }
+}
 ```
 
-Abra `http://localhost:8787/pc` no navegador do PC e escaneie o QR Code.
+| Opção       | Padrão       | Descrição                                                                   |
+|-------------|--------------|-----------------------------------------------------------------------------|
+| `porta`     | `8787`       | Porta do servidor                                                           |
+| `pasta`     | `recebidos`  | Onde os arquivos são salvos (relativa ao projeto ou absoluta)               |
+| `limitesMB` | tabela acima | Limite por categoria: `imagem`, `documento`, `audio`, `video`, `compactado` |
 
-Na primeira vez, o Firewall do Windows vai perguntar se o Node.js pode acessar a rede.
-Marque **apenas "Redes privadas"**. Não é preciso (nem recomendado) desativar o firewall.
-
-## Scripts
-
-| Comando             | O que faz                                                           |
-|---------------------|---------------------------------------------------------------------|
-| `npm run dev`       | Servidor + Vite com recarregamento automático (só acessível no PC)  |
-| `npm run build`     | Compila front e back                                                |
-| `npm start`         | Roda a versão compilada (é a que o celular acessa)                  |
-| `npm test`          | Testes automatizados (servidor e front)                             |
-| `npm run typecheck` | Verificação de tipos                                                |
-
-Em `npm run dev`, abra `http://localhost:5173/pc`. Para testar no celular, use `npm run build && npm start`.
-
-## Configuração
-
-| Variável         | Padrão                 | Descrição                    |
-|------------------|------------------------|------------------------------|
-| `LOCALDROP_PORTA`| `8787`                 | Porta do servidor            |
-| `LOCALDROP_DIR`  | `recebidos/` no projeto| Pasta onde os arquivos caem  |
+Erros no arquivo (opção com nome errado, valor inválido) impedem o LocalDrop de abrir e mostram o
+motivo no terminal. As variáveis de ambiente `LOCALDROP_PORTA` e `LOCALDROP_DIR` têm prioridade
+sobre o arquivo. O `localdrop.json` não vai para o Git.
 
 ## Problemas comuns
 
-- **O celular não abre a página:** confira se os dois estão no mesmo Wi-Fi, se a rede do Windows
-  está como *Privada* (Configurações → Rede e Internet → Wi-Fi → propriedades da rede) e se o
-  firewall foi liberado para redes privadas.
-- **Funciona em casa mas não em outro lugar:** redes de hotel, faculdade ou "convidados" costumam ter
-  *isolamento de clientes*, que impede um aparelho de falar com o outro.
-- **Endereço com IP errado:** o terminal lista os IPs ignorados e o motivo. VPNs e adaptadores
-  virtuais (WSL, VirtualBox) são descartados de propósito.
-- **Porta ocupada:** feche o outro programa ou rode com outra porta (`set LOCALDROP_PORTA=9000`).
+| Sintoma | O que fazer |
+|---|---|
+| O celular não abre a página | Confira se os dois estão no mesmo Wi-Fi e se a rede do Windows está como **Privada** (Configurações → Rede e Internet → Wi-Fi → propriedades da rede). Confira se o firewall foi liberado para redes privadas. |
+| Funciona em casa, mas não em outro lugar | Redes de hotel, faculdade ou "convidados" costumam ter **isolamento de clientes**, que impede um aparelho de falar com o outro. Não há o que fazer pelo LocalDrop. |
+| Endereço com IP errado | O terminal lista os IPs ignorados e o motivo. VPNs e adaptadores virtuais (WSL, VirtualBox, Hyper-V) são descartados de propósito. Desligar a VPN costuma resolver. |
+| "A porta 8787 já está em uso por outro programa" | Feche o outro programa ou troque a `porta` no `localdrop.json`. |
+| "PIN incorreto" | O PIN muda a cada abertura. Escaneie o QR Code de novo. Após 5 erros, o celular fica bloqueado por 5 minutos. |
+| O envio parou no meio | O celular pode ter bloqueado a tela ou perdido o Wi-Fi. Toque em **Tentar de novo**: só os que faltaram são reenviados. |
+| "Node.js não encontrado" ao abrir o atalho | Instale o Node.js LTS e abra o atalho de novo. |
+| Arquivo recusado | A tela mostra o motivo: tipo não permitido, acima do limite ou conteúdo que não bate com a extensão. |
 
 ## Segurança
 
-Veja [docs/DECISOES.md](docs/DECISOES.md). Resumo: PIN por sessão com bloqueio após tentativas erradas,
-tela do PIN acessível só no próprio PC, validação do conteúdo dos arquivos, nomes sanitizados
-(sem path traversal nem sobrescrita) e nenhum dado sai da rede local. A conexão é HTTP sem criptografia dentro da rede
-local, então use em redes em que você confia.
+O LocalDrop fica acessível para outros aparelhos da mesma rede, então foi feito com cuidado:
+
+- PIN por sessão, com bloqueio após 5 tentativas erradas.
+- A tela do PIN só abre no próprio PC (checagem de IP e do header `Host`, contra DNS rebinding).
+- Conteúdo de cada arquivo validado; docx/xlsx/pptx com macro recusados; zip nunca extraído.
+- Nomes de arquivo sanitizados (sem path traversal) e nunca sobrescritos.
+- Arquivos recebidos marcados como "baixados da internet" pelo Windows.
+- Cabeçalhos de segurança (CSP, anti-iframe) e proteção contra CSRF.
+
+**Limitação importante:** a conexão é **HTTP, sem criptografia**. Na mesma rede, alguém com as
+ferramentas certas poderia ver o tráfego, inclusive os arquivos e o PIN. Use em redes em que
+você confia, como a da sua casa. Detalhes em [docs/DECISOES.md](docs/DECISOES.md).
+
+## Desenvolvimento
+
+| Comando             | O que faz                                                           |
+|---------------------|---------------------------------------------------------------------|
+| `npm run dev`       | Servidor + Vite com recarregamento automático (só no PC)            |
+| `npm run build`     | Compila front e back                                                |
+| `npm start`         | Roda a versão compilada (é a que o celular acessa)                  |
+| `npm run iniciar`   | O mesmo que o atalho: instala/compila se preciso e abre o navegador |
+| `npm test`          | Testes automatizados (servidor e front)                             |
+| `npm run typecheck` | Verificação de tipos                                                |
+| `npm run atalho`    | Cria o atalho na Área de Trabalho                                   |
+| `npm run icone`     | Regera `scripts/localdrop.ico` a partir do desenho                  |
+
+Em `npm run dev`, abra `http://localhost:5173/pc`. O modo dev não fica acessível pela rede; para
+testar no celular, use `npm run iniciar`.
+
+Checklist de teste manual: [docs/CHECKLIST.md](docs/CHECKLIST.md).
+
+```
+client/   React + Vite (tela do PC e página do celular)
+server/   Node.js + Express (API, upload, validação)
+scripts/  Atalho, inicializador e ícone
+docs/     Decisões técnicas, diário do projeto e checklist
+```
 
 ## Stack
 
-Node.js · TypeScript · Express · React · Vite · Vitest
+Node.js · TypeScript · Express · React · Vite · Vitest · busboy · yauzl
+
+## Como foi feito
+
+Projeto pessoal construído em 4 fases com o Claude Code, documentado em
+[docs/DIARIO.md](docs/DIARIO.md).

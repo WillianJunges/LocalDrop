@@ -75,7 +75,10 @@ describe('PIN', () => {
 
   it('POST /api/pin confirma o PIN sem enviar arquivo', async () => {
     const servidor = app();
-    expect((await request(servidor).post('/api/pin').set('X-LocalDrop-Pin', PIN)).body).toEqual({ ok: true });
+    expect((await request(servidor).post('/api/pin').set('X-LocalDrop-Pin', PIN)).body).toEqual({
+      ok: true,
+      limites: LIMITES_PADRAO,
+    });
     expect((await request(servidor).post('/api/pin').set('X-LocalDrop-Pin', '999999')).status).toBe(401);
     expect((await request(servidor).post('/api/pin')).status).toBe(401);
   });

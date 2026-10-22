@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type EstadoFila, FILA_VAZIA, itensParaEnviar, reduzirFila } from './fila';
 import { formatarDuracao, MedidorVelocidade, tempoRestante } from './medidor';
-import { ACEITOS_ARQUIVOS, avaliarArquivo } from './regras';
+import { ACEITOS_ARQUIVOS, avaliarArquivo, LIMITES_PADRAO } from './regras';
 
 const arquivo = (nome: string, tamanho = 100, lastModified = 1) =>
   new File([new Uint8Array(tamanho)], nome, { lastModified });
@@ -16,6 +16,11 @@ describe('avaliarArquivo', () => {
     expect(avaliarArquivo('app.apk', 10).problema).toBe('Tipo de arquivo não permitido (.apk).');
     expect(avaliarArquivo('nota.txt', 0).problema).toBe('O arquivo está vazio.');
     expect(avaliarArquivo('foto.png', 51 * 1024 ** 2).problema).toBe('Maior que o limite de 50 MB para imagens.');
+  });
+
+  it('usa os limites configurados no PC quando informados', () => {
+    const limites = { ...LIMITES_PADRAO, imagem: 1024 };
+    expect(avaliarArquivo('foto.png', 2048, limites).problema).toBe('Maior que o limite de 1 KB para imagens.');
   });
 
   it('o seletor de arquivos usa a mesma lista do servidor', () => {

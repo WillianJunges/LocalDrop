@@ -10,7 +10,9 @@ import {
   nomeCategoria,
 } from '../../../server/src/tipos';
 
-export { type Categoria, formatarBytes };
+export { type Categoria, formatarBytes, LIMITES_PADRAO };
+
+export type Limites = Readonly<Record<Categoria, number>>;
 
 /** Botão "Arquivos": abre o gerenciador de arquivos já filtrado pela lista branca. */
 export const ACEITOS_ARQUIVOS = Object.keys(EXTENSOES_ACEITAS)
@@ -26,7 +28,7 @@ export interface Avaliacao {
   problema: string | null;
 }
 
-export function avaliarArquivo(nome: string, tamanho: number): Avaliacao {
+export function avaliarArquivo(nome: string, tamanho: number, limites: Limites = LIMITES_PADRAO): Avaliacao {
   const extensao = extensaoDe(nome);
   const categoria = categoriaDe(extensao);
   if (!categoria) {
@@ -34,7 +36,7 @@ export function avaliarArquivo(nome: string, tamanho: number): Avaliacao {
   }
   if (tamanho === 0) return { categoria, problema: 'O arquivo está vazio.' };
 
-  const limite = LIMITES_PADRAO[categoria];
+  const limite = limites[categoria];
   if (tamanho > limite) {
     return { categoria, problema: `Maior que o limite de ${formatarBytes(limite)} para ${nomeCategoria(categoria)}.` };
   }

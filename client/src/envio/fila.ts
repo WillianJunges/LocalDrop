@@ -1,4 +1,4 @@
-import { avaliarArquivo, type Categoria } from './regras';
+import { avaliarArquivo, type Categoria, type Limites } from './regras';
 
 /**
  * pronto: aguardando envio · enviando: em andamento
@@ -30,7 +30,7 @@ export interface EstadoFila {
 }
 
 export type Acao =
-  | { tipo: 'adicionar'; arquivos: File[] }
+  | { tipo: 'adicionar'; arquivos: File[]; limites?: Limites }
   | { tipo: 'remover'; id: number }
   | { tipo: 'removerRecusados' }
   | { tipo: 'iniciar'; id: number }
@@ -56,7 +56,7 @@ export function reduzirFila(estado: EstadoFila, acao: Acao): EstadoFila {
       for (const arquivo of acao.arquivos) {
         // Escolher a mesma foto duas vezes não duplica a lista.
         if ([...estado.itens, ...novos].some((item) => mesmoArquivo(item.arquivo, arquivo))) continue;
-        const { categoria, problema } = avaliarArquivo(arquivo.name, arquivo.size);
+        const { categoria, problema } = avaliarArquivo(arquivo.name, arquivo.size, acao.limites);
         novos.push({
           id: proximoId++,
           arquivo,

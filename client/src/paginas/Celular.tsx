@@ -15,8 +15,8 @@ const TEXTO_PIN: Record<EstadoPin, string> = {
 };
 
 export function Celular() {
-  const { pin, setPin, estado: estadoPin, mensagem: mensagemPin } = usePin();
-  const fila = useFilaEnvio(pin);
+  const { pin, setPin, estado: estadoPin, mensagem: mensagemPin, limites } = usePin();
+  const fila = useFilaEnvio(pin, limites);
   const enviando = fila.lote !== null;
   const pinOk = estadoPin === 'confirmado';
   const recusados = fila.itens.filter((item) => item.status === 'recusado').length;
