@@ -231,6 +231,26 @@ em `recebidos/`.
 **Pronto quando:** dou dois cliques no atalho, escaneio o QR e envio
 arquivos, sem abrir o terminal.
 
+### Fase 5 — PC para o celular e fechar sem terminal (extra, pós-v1)
+
+- **Enviar do PC para o celular:** card na tela do PC (arrastar ou escolher
+  arquivos); o PC copia para uma pasta temporária; o celular vê a lista
+  "Do computador" (com PIN, atualizando sozinha) e baixa por um link com
+  código temporário por arquivo. Mesma lista branca e limites do sentido
+  celular → PC. Arquivos somem ao remover ou ao fechar o LocalDrop.
+- **Fechar sem terminal** (para quem não usa terminal):
+  - atalho abre a janela minimizada;
+  - botão "Encerrar LocalDrop" na tela do PC (confirma se houver
+    transferência);
+  - fechar a aba do PC encerra o servidor: 15 s de espera ao fechar a aba,
+    3 min sem sinal se ela sumir sem avisar; só quando todas as abas do PC
+    fecharem; nunca durante envio ou download; sem aba nenhuma (npm start)
+    não fecha sozinho.
+- Sem extensões novas e sem `.exe` (decisão do usuário).
+
+**Pronto quando:** mando um arquivo do PC e baixo no celular; fecho a aba
+do PC e o LocalDrop encerra sozinho, sem ninguém tocar no terminal.
+
 ## 6. Fechamento de cada fase
 
 Ao final de cada fase, entregue de forma curta:

@@ -1,4 +1,5 @@
 import type { ChangeEvent } from 'react';
+import { DoComputador } from '../componentes/DoComputador';
 import { ItemArquivo } from '../componentes/ItemArquivo';
 import { formatarDuracao, formatarVelocidade } from '../envio/medidor';
 import { ACEITOS_ARQUIVOS, ACEITOS_GALERIA, formatarBytes } from '../envio/regras';
@@ -52,6 +53,8 @@ export function Celular() {
           {(estadoPin === 'bloqueado' || estadoPin === 'sem-conexao') && mensagemPin && ` ${mensagemPin}`}
         </p>
       </section>
+
+      <DoComputador pin={pin} ativo={pinOk} />
 
       <section className="seletores" aria-label="Escolher arquivos">
         <label className={`botao-secundario ${enviando ? 'desativado' : ''}`}>

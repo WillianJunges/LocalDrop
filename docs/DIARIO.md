@@ -206,3 +206,67 @@ Registro real de cada fase, para servir de base aos posts no LinkedIn.
 - Tela do PC com o card "Arquivos recebidos" e o Explorer aberto ao lado.
 - GIF final de 15 s: duplo clique → QR Code → celular escolhendo fotos → barra de progresso →
   arquivos na pasta.
+
+## Fase 5: PC para o celular e fechar sem terminal (22/10/2026)
+
+**Por que existe:** a v1 estava pronta, mas eu queria mandar arquivos também do PC para o
+celular. E minha esposa vai usar o LocalDrop e não sabe (nem precisa saber) fechar um servidor
+pelo terminal.
+
+**O que foi construído**
+- Card **Enviar para o celular** na tela do PC: arrastar ou escolher arquivos, com "✓ Baixado
+  pelo celular" quando o celular baixa.
+- Seção **Do computador** no celular, atualizando sozinha, com botão **Baixar**.
+- Botão **Encerrar LocalDrop**, que pede confirmação se houver transferência.
+- **Fechar a aba encerra o LocalDrop:** 15 s de espera ao fechar, 3 min se a aba sumir sem
+  avisar, só quando todas as abas fecharem e nunca no meio de uma transferência.
+- Atalho abrindo com o terminal minimizado.
+- 202 testes (189 servidor + 13 front).
+
+**Dificuldades e descobertas**
+- **O navegador não deixa a página ler o disco:** para mandar um arquivo do PC, a tela do PC
+  precisa enviar o conteúdo ao servidor, que guarda uma cópia temporária. Não existe "apontar
+  para o arquivo".
+- **Link de download não manda header:** o PIN vai em header, mas um `<a download>` não manda
+  headers. A solução foi um código aleatório por arquivo no link, entregue só para quem passou
+  pelo PIN.
+- **Saber quando a aba fechou é mais difícil do que parece:**
+  - um `fetch` comum é cortado quando a aba fecha; o `sendBeacon` é entregue mesmo assim, mas
+    não manda headers, e daí veio a chave no corpo;
+  - um F5 também "fecha" a página, e daí os 15 s de espera;
+  - o navegador desacelera abas em segundo plano, e daí os 3 min de folga;
+  - quando o PC suspende, o servidor acorda achando que todas as abas sumiram, e daí a detecção
+    de "pulo no tempo".
+- **Achei um bug da Fase 4 enquanto mexia no início do servidor:** o segundo clique no atalho
+  apagava o arquivo de um envio em andamento antes de perceber que o LocalDrop já estava aberto.
+  Corrigido: a limpeza só acontece depois que a porta é do processo.
+- **Sem a extensão do Chrome nesta fase:** as telas novas não puderam ser vistas no navegador
+  pelo Claude. O fluxo foi testado de ponta a ponta pela API, no servidor real.
+
+**Como o Claude ajudou**
+- Desenhou a caixa de saída reaproveitando toda a validação do upload, a presença das abas e o
+  encerramento seguro.
+- Testou no servidor real: arquivo do PC baixado no celular byte a byte, encerramento 20 s
+  depois de fechar a aba e o servidor **esperando** um envio de 31 s terminar antes de encerrar.
+- Encontrou e corrigiu o bug da limpeza antes da hora.
+- O que eu decidi: fazer o PC → celular, a mesma lista branca nos dois sentidos, os tempos
+  (15 s e 3 min), não adicionar extensões novas e manter o `.bat`.
+
+**Feedback do teste no celular (antes do push)**
+- Um nome comprido (`202610220214-ezgif.com-video-to-gif-converter.gif`) fazia o item sair da tela
+  no celular. Causa: item de grid com nome em uma linha só. Corrigido para todas as listas.
+- Pedi um botão para **cancelar** um arquivo vindo do PC, com confirmação. Ele remove também da
+  tela do PC.
+- A tela do PC desperdiçava espaço nas laterais e escondia o envio lá embaixo. Virou um layout em
+  3 colunas que cabe sem rolar.
+- Desta vez a extensão do Chrome funcionou: o Claude viu as telas, testou o Cancelar e confirmou
+  que fechar a aba do PC encerra o LocalDrop em 20 s.
+
+**Números**
+- 204 testes (191 servidor + 13 front).
+
+**Prints para tirar**
+- Tela do PC com o card "Enviar para o celular" e um item "✓ Baixado pelo celular".
+- Celular com "Do computador" e o botão Baixar.
+- GIF: arrastar um arquivo no PC → aparece no celular → baixar.
+- Botão "Encerrar LocalDrop" e a tela "LocalDrop encerrado".

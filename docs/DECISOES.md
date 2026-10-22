@@ -279,3 +279,82 @@ num arquivo só (esbuild), embutir o front como asset e injetar tudo numa cópia
 **Recomendação:** não fazer agora. O ganho principal (não precisar do Node.js) só importa para
 distribuir a outras pessoas, o que está fora do escopo. O atalho já resolve o uso pessoal.
 Fica como próximo passo se um dia o projeto for compartilhado.
+
+## Fase 5
+
+### PC para o celular
+
+- **Por que copiar o arquivo:** o navegador não deixa uma página ler arquivos do disco por
+  caminho; ela só recebe o conteúdo que o usuário escolhe ou arrasta. A tela do PC envia esse
+  conteúdo para o servidor (`POST /api/saida`), que guarda em `%TEMP%\localdrop-saida-<porta>`.
+- **Mesma rota de upload:** a caixa de saída reaproveita `criarRotaUpload`, com a mesma lista
+  branca, validação por conteúdo, limites, streaming e nomes sem sobrescrita. Só não grava o
+  Zone.Identifier (é uma cópia temporária, não um arquivo recebido).
+- **Ciclo de vida:** a pasta temporária é apagada ao iniciar (sobras), ao remover o item e ao
+  encerrar (inclusive ao fechar a janela do terminal, via `SIGHUP`). Os itens só existem na
+  memória do processo.
+- **Acesso do celular:**
+  - `GET /api/disponiveis` exige o PIN (mesma contagem de tentativas das outras rotas).
+  - Cada item tem um código aleatório de 256 bits. O link de download é
+    `/api/baixar/<id>?t=<código>`, porque um link `<a download>` não consegue mandar o header do
+    PIN. Só recebe o código quem passou pelo PIN. A comparação é em tempo constante.
+  - Código errado, de outro arquivo ou item removido: 404, sem diferenciar.
+  - `res.download` manda como anexo com o nome em UTF-8 e aceita `Range`, então o Android pode
+    retomar downloads grandes. Pedaços de download retomado não contam como download novo.
+- **A tela do PC** consulta `GET /api/saida` a cada 3 s para mostrar "✓ Baixado pelo celular". Essa
+  lista nunca inclui os códigos dos links.
+- **O celular** consulta a lista a cada 3 s, só com a página visível (poupa bateria).
+
+### Fechar sem terminal
+
+- **Atalho minimizado** (`WindowStyle = 7` no `.lnk`).
+- **Botão "Encerrar LocalDrop"** (`POST /api/encerrar`, só no PC, com o header da página). A
+  resposta sai antes do encerramento. Se houver transferência, a página pede confirmação na
+  própria tela (sem `confirm()` do navegador).
+- **Presença das abas** (`presenca.ts`):
+  - Cada aba da tela do PC manda um sinal a cada 10 s (`POST /api/pc/presenca`) e, ao fechar,
+    um aviso por `navigator.sendBeacon` (entregue mesmo com a aba fechando).
+  - O `sendBeacon` não manda headers customizados. Por isso, a rota exige uma **chave** no
+    corpo, que a página recebe de `/api/sessao` (só responde no próprio PC). Um site malicioso
+    não consegue ler essa chave, então não consegue fingir ser a aba.
+  - Aba que avisou que fechou: 15 s de espera (um F5 manda sinal de novo antes disso). Aba que
+    sumiu sem avisar: 3 min. O navegador desacelera timers de abas em segundo plano (até 1 por
+    minuto), por isso essa folga.
+  - Encerra só quando **todas** as abas fecharam, **nenhuma transferência** está em andamento
+    (`Atividade` conta envios e downloads) e **já houve alguma aba**. Rodando com `npm start`,
+    sem abrir o navegador, nunca encerra sozinho.
+  - **PC suspenso:** ao acordar, o servidor "pula" no tempo e as abas ainda não mandaram sinal.
+    Se a verificação detectar uma pausa de mais de 60 s, dá novo prazo a todas em vez de encerrar.
+
+### Bug corrigido: limpeza antes da hora
+
+Desde a Fase 4, o servidor apagava os `.part` de `recebidos/` **antes** de tentar abrir a porta.
+No segundo clique do atalho com um envio em andamento, o processo novo apagava o `.part` do envio
+do processo antigo, e só depois percebia que o LocalDrop já estava aberto. Agora a limpeza (e a
+preparação da pasta temporária de saída) só acontece depois que a porta é deste processo.
+
+### Testado de ponta a ponta (servidor real, pela API)
+
+- O PC colocou 2 arquivos; o celular listou pelo IP da rede, baixou e o conteúdo bateu byte a
+  byte; o PC viu `downloads: 1`.
+- A aba "fechou" e o LocalDrop encerrou em 20 s (15 s de espera + até 5 s até a próxima
+  verificação), apagando a pasta temporária.
+- A aba fechou aos 2 s com um envio lento (~31 s) em andamento: o servidor continuou vivo, o
+  arquivo chegou inteiro e só então encerrou (aos 37 s).
+- Encerrar: recusado sem o header e pela rede; pelo PC, encerrou.
+- **No navegador (depois do ajuste de layout):** tela do PC sem rolagem, nome comprido quebrando
+  em 2 linhas no celular, Cancelar com confirmação removendo dos dois lados, sem erros no console,
+  e a aba do PC fechada de verdade encerrando o LocalDrop em 20 s.
+
+### Ajustes depois do teste no celular
+
+- **Item estourando a tela no celular:** a lista é um grid, e item de grid tem largura mínima igual
+  ao conteúdo; com `white-space: nowrap` no nome, um nome comprido sem espaços empurrava o item
+  para fora da tela. Agora a coluna é `minmax(0, 1fr)` e o nome quebra em até 2 linhas
+  (`overflow-wrap: anywhere`). Vale para todas as listas.
+- **Cancelar recebimento:** botão **Cancelar** ao lado do **Baixar**, com a pergunta "Deseja mesmo
+  cancelar o recebimento?" na própria tela. `DELETE /api/disponiveis/:id` (com PIN) tira o
+  arquivo da caixa de saída: some do celular, da tela do PC e da pasta temporária.
+- **Tela do PC em colunas:** largura máxima de 1440 px e grid por áreas. Em telas largas
+  (≥ 1200 px): QR e PIN | instruções e pasta | enviar para o celular. Entre 760 e 1200 px: duas
+  colunas, com o envio embaixo. Abaixo disso: uma coluna. A lista do envio rola dentro do card.

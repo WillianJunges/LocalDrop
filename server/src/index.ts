@@ -1,9 +1,15 @@
 import { mkdirSync } from 'node:fs';
 import http from 'node:http';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { criarApp } from './app.js';
 import { limparTemporarios } from './armazenamento.js';
+import { Atividade } from './atividade.js';
 import { carregarConfig } from './config.js';
+import { INTERVALO_VERIFICACAO_MS, MonitorPresenca } from './presenca.js';
 import { escolherIpLocal } from './rede.js';
+import { CaixaDeSaida } from './saida.js';
 import { gerarPin } from './sessao.js';
 import { abrirNavegador } from './sistema.js';
 
@@ -36,12 +42,20 @@ function localDropJaRodando(porta: number): Promise<boolean> {
 async function iniciar(): Promise<void> {
   const config = carregarConfig();
   mkdirSync(config.pastaRecebidos, { recursive: true });
-  const sobras = await limparTemporarios(config.pastaRecebidos);
-  if (sobras > 0) console.log(`  ${sobras} envio(s) incompleto(s) da última execução apagado(s).`);
 
   const urlPc = `http://localhost:${config.porta}/pc`;
   const rede = escolherIpLocal();
   const pin = gerarPin();
+  const atividade = new Atividade();
+  const saida = new CaixaDeSaida(path.join(tmpdir(), `localdrop-saida-${config.porta}`));
+
+  // Definido mais abaixo, depois que o servidor existe; a presença e o botão "Encerrar" usam.
+  let encerrar: (motivo: string) => void = () => {};
+  const presenca = new MonitorPresenca({
+    ocupado: () => atividade.emAndamento > 0,
+    aoFecharTudo: () => encerrar('a tela do PC foi fechada'),
+  });
+
   const app = criarApp({
     sessao: {
       pin,
@@ -52,6 +66,13 @@ async function iniciar(): Promise<void> {
     pastaClient: config.pastaClient,
     pastaRecebidos: config.pastaRecebidos,
     upload: { limites: config.limites },
+    saida,
+    atividade,
+    pc: {
+      chave: randomBytes(32).toString('hex'),
+      presenca,
+      aoEncerrar: () => encerrar('botão "Encerrar LocalDrop"'),
+    },
   });
 
   // Sem host: escuta em todas as interfaces (IPv4 e IPv6), inclusive o Wi-Fi.
@@ -59,7 +80,14 @@ async function iniciar(): Promise<void> {
   // O padrão do Node (5 min) cortaria vídeos grandes; a rota de upload controla a inatividade.
   servidor.requestTimeout = 0;
 
-  servidor.on('listening', () => {
+  servidor.on('listening', async () => {
+    // Só agora a porta é deste processo. Limpar antes apagaria os arquivos de um
+    // LocalDrop que já estava aberto (ex.: segundo clique no atalho durante um envio).
+    const sobras = await limparTemporarios(config.pastaRecebidos);
+    if (sobras > 0) console.log(`  ${sobras} envio(s) incompleto(s) da última execução apagado(s).`);
+    await saida.preparar();
+    setInterval(() => presenca.verificar(), INTERVALO_VERIFICACAO_MS).unref();
+
     console.log('\n  LocalDrop rodando\n');
     console.log(`  No PC:      ${urlPc}`);
     if (rede.escolhido) {
@@ -76,7 +104,7 @@ async function iniciar(): Promise<void> {
     for (const d of rede.descartados) {
       console.log(`  Ignorado: ${d.endereco} (${d.interfaceNome}): ${d.motivo}`);
     }
-    console.log('\n  Para encerrar: Ctrl+C ou feche esta janela.\n');
+    console.log('\n  Para encerrar: botão "Encerrar LocalDrop", fechar a tela do PC ou Ctrl+C aqui.\n');
 
     if (ABRIR_NAVEGADOR) abrirNavegador(urlPc);
   });
@@ -100,17 +128,23 @@ async function iniciar(): Promise<void> {
   });
 
   let encerrando = false;
-  const encerrar = (sinal: string) => {
+  encerrar = (motivo: string) => {
     if (encerrando) return;
     encerrando = true;
-    console.log(`\n  Encerrando (${sinal})...`);
-    servidor.close(() => process.exit(0));
+    console.log(`\n  Encerrando (${motivo})...`);
+    const sair = () => {
+      saida.esvaziar();
+      process.exit(0);
+    };
+    servidor.close(sair);
     servidor.closeIdleConnections();
     // Se alguma conexão travar o encerramento, sai mesmo assim.
-    setTimeout(() => process.exit(0), 5000).unref();
+    setTimeout(sair, 5000).unref();
   };
-  process.on('SIGINT', () => encerrar('SIGINT'));
+  process.on('SIGINT', () => encerrar('Ctrl+C'));
   process.on('SIGTERM', () => encerrar('SIGTERM'));
+  // Fechar a janela do terminal no Windows.
+  process.on('SIGHUP', () => encerrar('janela fechada'));
 }
 
 iniciar().catch((erro: unknown) => {

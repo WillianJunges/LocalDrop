@@ -39,16 +39,31 @@ export async function conferirPin(pin: string): Promise<ResultadoPin> {
   }
 }
 
+export interface Destino {
+  url: string;
+  headers: Record<string, string>;
+}
+
+/** Celular para o PC: rota de upload com o PIN. */
+export const destinoUpload = (pin: string): Destino => ({ url: '/api/upload', headers: { 'X-LocalDrop-Pin': pin } });
+
+/** Tela do PC para a caixa de saída do celular. */
+export const DESTINO_SAIDA: Destino = { url: '/api/saida', headers: { 'X-LocalDrop': '1' } };
+
 /**
  * Envia um arquivo com XMLHttpRequest: diferente do fetch, ele informa o
  * progresso do upload, que é o que alimenta a barra.
  */
-export function enviarArquivo(arquivo: File, pin: string, aoProgredir: (bytesEnviados: number) => void): EnvioEmAndamento {
+export function enviarArquivo(
+  arquivo: File,
+  destino: Destino,
+  aoProgredir: (bytesEnviados: number) => void,
+): EnvioEmAndamento {
   const xhr = new XMLHttpRequest();
 
   const resultado = new Promise<ResultadoEnvio>((resolve) => {
-    xhr.open('POST', '/api/upload');
-    xhr.setRequestHeader('X-LocalDrop-Pin', pin);
+    xhr.open('POST', destino.url);
+    for (const [nome, valor] of Object.entries(destino.headers)) xhr.setRequestHeader(nome, valor);
     xhr.responseType = 'json';
 
     xhr.upload.onprogress = (evento) => {
