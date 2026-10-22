@@ -31,6 +31,8 @@ describe('GET /api/sessao', () => {
       interfaceNome: 'Wi-Fi',
       pasta: pastaClient,
       limites: LIMITES_PADRAO,
+      versao: 'dev',
+      transferencias: 0,
     });
   });
 

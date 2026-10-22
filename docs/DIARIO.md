@@ -270,3 +270,16 @@ pelo terminal.
 - Celular com "Do computador" e o botão Baixar.
 - GIF: arrastar um arquivo no PC → aparece no celular → baixar.
 - Botão "Encerrar LocalDrop" e a tela "LocalDrop encerrado".
+
+## Correção pós-v1.0: o cancelamento que voltava (22/10/2026)
+
+- **O que aconteceu:** cancelei no celular um arquivo vindo do PC, atualizei a página e ele
+  voltou.
+- **A causa foi uma combinação:** o LocalDrop aberto no PC era de antes da atualização (o atalho só
+  abria o navegador se já tivesse um aberto), e a página do celular interpretava "rota não
+  existe" como "arquivo já removido".
+- **Lição:** a interface não deve concluir sozinha que algo deu certo; quem decide é o servidor.
+  E quando o código muda, a versão antiga aberta precisa sair do caminho.
+- **Agora:** o celular confere a lista com o servidor depois de cancelar, e o atalho troca uma
+  versão antiga aberta pela nova, sem nunca interromper uma transferência.
+- 217 testes (204 servidor + 13 front).
